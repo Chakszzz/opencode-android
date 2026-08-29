@@ -58,7 +58,8 @@ export const useCatalog = create<CatalogState>((set, get) => ({
   loaded: false,
 
   load: async () => {
-    const client = useConnections.getState().client
+    const connState = useConnections.getState()
+    const client = connState.clientForDirectory(undefined) || connState.client
     if (!client) return
 
     const [agentResult, commandResult, providerResult] = await Promise.all([
@@ -146,8 +147,11 @@ export const useCatalog = create<CatalogState>((set, get) => ({
 
   cycleAgent: (direction = 1) => {
     const { agents, agent } = get()
-    const primary = agents.filter((a) => a.mode === "primary" || a.mode === "all")
-    if (primary.length < 2) return
+    const primary = agents.filter((a) => (a.mode ?? "all") !== "subagent")
+    if (primary.length < 2) {
+      console.warn("[cycleAgent] no-op: fewer than 2 primary agents available")
+      return
+    }
     const idx = primary.findIndex((a) => a.name === agent)
     const next = (idx + direction + primary.length) % primary.length
     get().setAgent(primary[next].name)

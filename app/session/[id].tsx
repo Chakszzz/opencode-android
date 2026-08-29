@@ -93,12 +93,17 @@ export default function SessionScreen() {
     isLoading,
     loadingMore,
     hasMore,
+    error: sessionsError,
     selectSession,
     sendMessage,
     abortSession,
     loadOlderMessages,
     revertToMessage,
     unrevertSession,
+    clearError,
+    loadSubagents,
+    subagents,
+    subagentsLoading,
   } = useSessions()
 
   // Derive sending state for this specific session
@@ -143,6 +148,13 @@ export default function SessionScreen() {
     useCallback((text: string) => {
       setInput((prev) => (prev ? prev + " " + text : text))
     }, []),
+  )
+
+  // Clear stale speech error when returning to this screen.
+  useFocusEffect(
+    useCallback(() => {
+      speech.reset()
+    }, [speech.reset]),
   )
 
   // Surface speech recognition failures (e.g. mic permission denied). Keyed
@@ -271,6 +283,7 @@ export default function SessionScreen() {
         const connState = useConnections.getState()
         const c = directory ? (connState.clientForDirectory(directory) ?? connState.client) : connState.client
         if (c) refreshPending(c, id)
+        loadSubagents()
       })
     }, [id, directory]),
   )
@@ -626,6 +639,16 @@ export default function SessionScreen() {
           onClose={() => setShowInfo(false)}
         />
 
+        {/* Error banner */}
+        {sessionsError && (
+          <View style={[s.banner, s.bannerError]}>
+            <Text style={s.bannerText}>{sessionsError}</Text>
+            <TouchableOpacity onPress={clearError} hitSlop={8}>
+              <Ionicons name="close-circle" size={20} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* SSE reconnect/connected banner */}
         {reconnectAttempts > 0 && (
           <View style={[s.banner, s.bannerReconnecting]}>
@@ -713,6 +736,43 @@ export default function SessionScreen() {
 
         {/* Status */}
         {currentSession && <StatusIndicator sessionID={currentSession.id} isDark={isDark} />}
+
+        {/* Subagents */}
+        {subagents.length > 0 && (
+          <View style={[s.subagentSection, isDark && s.subagentSectionDark]}>
+            <Text style={[s.subagentHeader, isDark && s.subagentHeaderDark]}>
+              Subagents ({subagents.length})
+            </Text>
+            {subagentsLoading ? (
+              <ActivityIndicator size="small" color={isDark ? "#ffffff" : "#0a0a0a"} />
+            ) : (
+              subagents.map((sa) => (
+                <TouchableOpacity
+                  key={sa.id}
+                  style={[s.subagentItem, isDark && s.subagentItemDark]}
+                  onPress={() => router.push(`/session/${sa.id}?directory=${sa.directory}`)}
+                >
+                  <View style={s.subagentItemContent}>
+                    <Ionicons name="chevron-forward" size={14} color={isDark ? "#666666" : "#999999"} />
+                    <View style={s.subagentItemText}>
+                      <Text style={[s.subagentTitle, isDark && s.subagentTitleDark]} numberOfLines={1}>
+                        {sa.title}
+                      </Text>
+                      <Text style={[s.subagentMeta, isDark && s.subagentMetaDark]} numberOfLines={1}>
+                        {sa.time.updated
+                          ? new Date(sa.time.updated).toLocaleDateString()
+                          : "—"}
+                      </Text>
+                    </View>
+                    {sa.parentID && (
+                      <View style={[s.subagentDot, { backgroundColor: "#8b5cf6" }]} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        )}
 
         {/* Permissions */}
         {permissions.map((perm) => (
@@ -1055,6 +1115,7 @@ const s = StyleSheet.create({
   },
   bannerReconnecting: { backgroundColor: "#92400e" },
   bannerConnected: { backgroundColor: "#065f46" },
+  bannerError: { backgroundColor: "#991b1b", flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 6 },
   bannerText: { color: "#ffffff", fontSize: 13, fontWeight: "500" },
 
   // Pending revert (edit message) banner
@@ -1064,4 +1125,33 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
   },
   bannerAction: { color: "#93c5fd", fontSize: 13, fontWeight: "700" },
+
+  // Subagent section
+  subagentSection: {
+    borderTopWidth: 1,
+    borderTopColor: "#e5e5e5",
+    backgroundColor: "#ffffff",
+  },
+  subagentSectionDark: { borderTopColor: "#1a1a1a", backgroundColor: "#0a0a0a" },
+  subagentHeader: { fontSize: 12, fontWeight: "600", color: "#666666", paddingHorizontal: 16, paddingVertical: 8 },
+  subagentHeaderDark: { color: "#888888" },
+  subagentItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  subagentItemDark: { backgroundColor: "#0a0a0a" },
+  subagentItemContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 8,
+  },
+  subagentItemText: { flex: 1 },
+  subagentTitle: { fontSize: 14, color: "#0a0a0a" },
+  subagentTitleDark: { color: "#ffffff" },
+  subagentMeta: { fontSize: 12, color: "#999999" },
+  subagentMetaDark: { color: "#666666" },
+  subagentDot: { width: 8, height: 8, borderRadius: 4 },
 })

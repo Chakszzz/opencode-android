@@ -462,10 +462,14 @@ export function createClient(config: ClientConfig) {
           body: JSON.stringify(partID ? { messageID, partID } : { messageID }),
         }),
 
-      unrevert: (sessionID: string) =>
+       unrevert: (sessionID: string) =>
         request<Session>(config, `/session/${sessionID}/unrevert`, {
           method: "POST",
         }),
+
+      // Get child sessions (subagents) spawned by this session
+      children: (sessionID: string) =>
+        request<Session[]>(config, `/session/${sessionID}/children`),
     },
 
     permission: {

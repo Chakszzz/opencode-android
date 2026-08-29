@@ -1,12 +1,15 @@
 # APK Size Optimization for F-Droid / IzzyOnDroid
 
-## Current state
+## Current state (2026-08)
 
-| Artifact | Size |
-|----------|------|
-| Universal AAB (`app-release.aab`) | 58.5 MB |
-| Per-ABI APK (estimated) | ~20–25 MB |
-| IzzyOnDroid per-APK limit | 30 MB |
+ABI splits are now configured via the `plugins/withAbiSplits.js` Expo config plugin.
+`./gradlew assembleRelease` produces three APKs:
+
+| Artifact | Target | Notes |
+|----------|--------|-------|
+| `app-armeabi-v7a-release.apk` | arm7 (32-bit ARM) | Legacy devices |
+| `app-arm64-v8a-release.apk` | arm8 (64-bit ARM) | Primary target, ~20–25 MB |
+| `app-universal-release.apk` | Universal | All ABIs, larger |
 
 `bundletool` is not installed in this environment, so per-ABI APK sizes were not
 measured directly. The estimate above is based on typical Expo/Hermes React Native
@@ -17,7 +20,16 @@ apps:
 - Assets (icons, splash, etc.): ~2–3 MB
 
 **Conclusion:** arm64-v8a APK is likely ~20–25 MB — within IzzyOnDroid's 30 MB limit.
-No ABI splits required for the initial submission.
+
+Build pipelines (`build.yml`, `publish-fdroid.yml`) produce and upload all three APK types.
+GitHub Release attaches: `arm7-release.apk`, `arm8-release.apk`, `universal-release.apk`, `app-release-fdroid.apk`.
+
+### Why was the universal APK ~80 MB?
+
+Without ABI splits, a single universal APK embeds native libraries for **all**
+architectures (armeabi-v7a, arm64-v8a, x86, x86_64). Each architecture adds ~15–25 MB
+of native binaries (Hermes bytecode + React Native libs). Four architectures × ~20 MB
+≈ 80 MB. ABI splits produce one APK per architecture, dramatically reducing each APK's size.
 
 To verify when bundletool is available:
 ```bash

@@ -108,7 +108,19 @@ export const useConnections = create<ConnectionsState>((set, get) => ({
         const built = buildClient(active.url, active.directory, auth)
         client = built.client
         base = built.base
-        // Fetch current project info and server paths
+
+        // Commit client immediately so SSE/catalog can start; fetch
+        // project metadata behind it — a hanging /project/current or
+        // /path.get must not block the live event pipeline (issue #189).
+        set({
+          connections,
+          activeConnection: active,
+          client,
+          clientBase: base,
+          recentDirectories,
+          isLoading: false,
+        })
+
         try {
           const [proj, paths] = await Promise.all([
             client.project.current().catch(() => null),
@@ -119,18 +131,20 @@ export const useConnections = create<ConnectionsState>((set, get) => ({
         } catch {
           // Server might be offline
         }
-      }
 
-      set({
-        connections,
-        activeConnection: active,
-        client,
-        clientBase: base,
-        currentProject: project,
-        serverHome: home,
-        recentDirectories,
-        isLoading: false,
-      })
+        set({ currentProject: project, serverHome: home })
+      } else {
+        set({
+          connections,
+          activeConnection: active,
+          client,
+          clientBase: base,
+          currentProject: project,
+          serverHome: home,
+          recentDirectories,
+          isLoading: false,
+        })
+      }
     } catch (error) {
       set({ error: "Failed to load connections", isLoading: false })
     }
@@ -158,9 +172,6 @@ export const useConnections = create<ConnectionsState>((set, get) => ({
     let base = get().clientBase
     let activeConnection = get().activeConnection
 
-    let project = get().currentProject
-    let serverHome = get().serverHome
-
     if (newConnection.active) {
       activeConnection = newConnection
       const auth = buildAuth(newConnection.username, password)
@@ -168,21 +179,21 @@ export const useConnections = create<ConnectionsState>((set, get) => ({
       client = built.client
       base = built.base
 
-      // Fetch server metadata so loadSessions can use clientForDirectory(serverHome)
-      // immediately after the connection is added (same as setActiveConnection does).
+      // Commit client immediately; fetch metadata behind it (issue #189).
+      set({ connections, activeConnection, client, clientBase: base })
+
       try {
         const [proj, paths] = await Promise.all([
           client.project.current().catch(() => null),
           client.path.get().catch(() => null),
         ])
-        project = proj
-        serverHome = paths?.home || null
+        set({ currentProject: proj, serverHome: paths?.home || null })
       } catch {
         // Server might be unreachable; proceed without metadata
       }
+    } else {
+      set({ connections, activeConnection, client, clientBase: base })
     }
-
-    set({ connections, activeConnection, client, clientBase: base, currentProject: project, serverHome })
   },
 
   removeConnection: async (id) => {
@@ -223,8 +234,6 @@ export const useConnections = create<ConnectionsState>((set, get) => ({
     const active = connections.find((c) => c.id === id) || null
     let client: Client | null = null
     let base: ClientBase | null = null
-    let project: Project | null = null
-    let home: string | null = null
 
     if (active) {
       const password = await SecureStore.getItemAsync(`${PASSWORDS_PREFIX}${active.id}`)
@@ -233,13 +242,15 @@ export const useConnections = create<ConnectionsState>((set, get) => ({
       client = built.client
       base = built.base
 
+      // Commit client immediately; fetch metadata behind it (issue #189).
+      set({ connections, activeConnection: active, client, clientBase: base })
+
       try {
         const [proj, paths] = await Promise.all([
-          client.project.current().catch(() => null),
-          client.path.get().catch(() => null),
+          built.client.project.current().catch(() => null),
+          built.client.path.get().catch(() => null),
         ])
-        project = proj
-        home = paths?.home || null
+        set({ currentProject: proj, serverHome: paths?.home || null })
       } catch {
         // Server might be offline
       }
@@ -247,13 +258,13 @@ export const useConnections = create<ConnectionsState>((set, get) => ({
       // Update last connected time
       active.lastConnected = Date.now()
       await SecureStore.setItemAsync(CONNECTIONS_KEY, JSON.stringify(connections))
+    } else {
+      set({ connections, activeConnection: active, client, clientBase: base })
     }
-
-    set({ connections, activeConnection: active, client, clientBase: base, currentProject: project, serverHome: home })
     addBreadcrumb({
       category: "connection",
       message: active ? `active connection set: ${active.type}` : "active connection cleared",
-      data: { id: active?.id, type: active?.type, hasProject: Boolean(project) },
+      data: { id: active?.id, type: active?.type, hasProject: Boolean(client) },
     })
   },
 
@@ -295,27 +306,23 @@ export const useConnections = create<ConnectionsState>((set, get) => ({
       const password = await SecureStore.getItemAsync(`${PASSWORDS_PREFIX}${id}`)
       const auth = buildAuth(active.username, password)
       const built = buildClient(active.url, active.directory, auth)
+
+      // Commit client immediately; fetch metadata behind it (issue #189).
+      set({
+        connections,
+        activeConnection: active,
+        client: built.client,
+        clientBase: built.base,
+      })
+
       try {
         const [project, paths] = await Promise.all([
           built.client.project.current().catch(() => null),
           built.client.path.get().catch(() => null),
         ])
-        set({
-          connections,
-          activeConnection: active,
-          client: built.client,
-          clientBase: built.base,
-          currentProject: project,
-          serverHome: paths?.home || null,
-        })
+        set({ currentProject: project, serverHome: paths?.home || null })
       } catch {
-        set({
-          connections,
-          activeConnection: active,
-          client: built.client,
-          clientBase: built.base,
-          currentProject: null,
-        })
+        set({ currentProject: null })
       }
     } else {
       set({ connections })

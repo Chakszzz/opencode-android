@@ -36,6 +36,9 @@ interface SessionsState {
   loadingMore: boolean
   hasMore: boolean
   error: string | null
+  // Subagents (child sessions spawned by the current session)
+  subagents: Session[]
+  subagentsLoading: boolean
 
   // Actions
   loadSessions: () => Promise<void>
@@ -52,12 +55,14 @@ interface SessionsState {
   ) => Promise<void>
   abortSession: () => Promise<void>
   refreshMessages: () => Promise<void>
+  loadSubagents: () => Promise<void>
 
   // Revert (edit sent message) / unrevert (undo the pending revert)
   revertToMessage: (messageID: string) => Promise<RevertResult>
   unrevertSession: () => Promise<void>
 
   // Event handling
+  clearError: () => void
   handleEvent: (event: Event) => void
 }
 
@@ -96,6 +101,8 @@ export const useSessions = create<SessionsState>((set, get) => ({
   loadingMore: false,
   hasMore: false,
   error: null,
+  subagents: [],
+  subagentsLoading: false,
 
   loadSessions: async () => {
     const connState = useConnections.getState()
@@ -148,6 +155,8 @@ export const useSessions = create<SessionsState>((set, get) => ({
         hasMore: false,
         loadingMore: false,
         sending: { ...state.sending, [sessionID]: false },
+        subagents: [],
+        subagentsLoading: false,
       }))
 
       const [session, messagesResponse] = await Promise.all([
@@ -363,6 +372,23 @@ export const useSessions = create<SessionsState>((set, get) => ({
       set({ error: "Failed to refresh messages" })
     }
   },
+
+  loadSubagents: async () => {
+    const session = get().currentSession
+    if (!session) return
+    const client = clientFor(session.directory)
+    if (!client) return
+
+    set({ subagentsLoading: true })
+    try {
+      const subagents = await client.session.children(session.id)
+      set({ subagents, subagentsLoading: false })
+    } catch {
+      set({ subagents: [], subagentsLoading: false })
+    }
+  },
+
+  clearError: () => set({ error: null }),
 
   // Marks messageID (and everything after it) as pending revert, so the
   // user can re-edit and resend it. The server keeps the underlying
