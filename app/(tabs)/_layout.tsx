@@ -2,6 +2,7 @@ import { Tabs } from "expo-router"
 import { useColorScheme } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useTranslation } from "react-i18next"
+import { OpenCodeLogo } from "../../src/components/OpenCodeLogo"
 
 export default function TabLayout() {
   const colorScheme = useColorScheme()
@@ -27,6 +28,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: t("nav.sessionsTab"),
+          headerTitle: () => <OpenCodeLogo height={16} showBadge={true} badgeText="Mobile" isDark={isDark} />,
           tabBarIcon: ({ color, size }) => <Ionicons name="chatbubbles-outline" size={size} color={color} />,
         }}
       />

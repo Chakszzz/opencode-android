@@ -52,6 +52,10 @@
       "docs": {
         "label": "Documentation",
         "description": "Learn how to use OpenCode"
+      },
+      "feedback": {
+        "label": "Send Feedback",
+        "description": "Help us improve OpenCode Android"
       }
     },
     "language": {
@@ -59,6 +63,7 @@
       "title": "Choose Language",
       "system": "System Default",
       "en": "English",
+      "id": "Indonesian",
       "zhHans": "Simplified Chinese"
     },
     "footer": {
@@ -95,7 +100,9 @@
     },
     "actions": {
       "editMessage": "Edit message",
-      "replace": "Replace"
+      "replace": "Replace",
+      "fork": "Fork Session from Here",
+      "forkPrefix": "Fork"
     },
     "alerts": {
       "messageActionsTitle": "Message actions",
@@ -122,7 +129,9 @@
       "imageFailedTitle": "Image not attached",
       "imageFailedMessage": "One or more images could not be processed. Please try a different photo.",
       "speechErrorTitle": "Voice input failed",
-      "speechErrorMessage": "Could not use voice input. Check your microphone permission and try again."
+      "speechErrorMessage": "Could not use voice input. Check your microphone permission and try again.",
+      "forkFailedTitle": "Fork Failed",
+      "forkFailedMessage": "Could not fork session. Please try again."
     }
   },
   "connection": {
@@ -245,6 +254,7 @@
   },
   "sessionsList": {
     "untitledSession": "Untitled Session",
+    "searchPlaceholder": "Search sessions...",
     "time": {
       "justNow": "Just now",
       "minutesAgo": "{{count}}m ago",
@@ -253,7 +263,13 @@
     },
     "filesCount": "{{count}} files",
     "actions": {
-      "rename": "Rename"
+      "rename": "Rename",
+      "archive": "Archive Session",
+      "unarchive": "Unarchive Session"
+    },
+    "tabs": {
+      "active": "Active ({{count}})",
+      "archived": "Archived ({{count}})"
     },
     "alerts": {
       "renameFailedTitle": "Rename failed",
@@ -331,7 +347,7 @@
     "bullets": {
       "deviceInfo": "Device model, OS version, app version",
       "stackTraces": "Stack traces of crashes (no variable values)",
-      "usageEvents": "Anonymous usage events (app opened, connection attempts, messages sent) — sent to PostHog EU",
+      "usageEvents": "Anonymous usage events (app opened, connection attempts, messages sent) — sent to PostHog",
       "noCode": "Your code, prompts, or chat messages",
       "noServerUrls": "Server URLs or authentication tokens"
     },
@@ -401,7 +417,10 @@
       "thisFolderFallback": "this folder"
     },
     "reasoningBlock": {
-      "label": "Thinking"
+      "thinking": "Thinking...",
+      "thinkingWithDuration": "Thinking ({{duration}}s)...",
+      "thoughtWithDuration": "Thought for {{duration}}s",
+      "thoughtProcess": "Thought process"
     },
     "toolCallCard": {
       "fallbackTitle": "Tool",
@@ -434,6 +453,12 @@
         "hoursAgo": "{{count}}h ago",
         "daysAgo": "{{count}}d ago"
       }
+    },
+    "todo": {
+      "title": "Tasks & Todos",
+      "emptyTitle": "No tasks tracked yet",
+      "emptyDesc": "OpenCode creates and tracks task checklists automatically when planning complex changes.",
+      "noMatch": "No matching tasks"
     }
   },
   "demo": {
@@ -451,5 +476,41 @@
     "action": "Get it",
     "dismiss": "Not now",
     "upToDate": "Up to date"
+  },
+  "feedback": {
+    "title": "Feedback & Survey",
+    "thankYou": "Thank you for your feedback!",
+    "submittedNotice": "Your response has been sent to help us improve the app.",
+    "selectOption": "Select an option:",
+    "categoryTitle": "Feedback Category",
+    "categories": {
+      "general": "General",
+      "bug": "Bug Report",
+      "feature": "Feature",
+      "praise": "Praise"
+    },
+    "ratingTitle": "How is your experience?",
+    "commentsTitle": "Comments (optional)",
+    "commentsPlaceholder": "Share your thoughts, suggestions, or issues...",
+    "submit": "Submit Feedback"
+  },
+  "setupGuide": {
+    "title": "Server Setup Guide",
+    "step1": {
+      "title": "Install OpenCode on Computer",
+      "desc": "Run the following command in Terminal (Mac, Linux, or Windows WSL):"
+    },
+    "step2": {
+      "title": "Start Server",
+      "desc": "Open your project directory in terminal, then run:"
+    },
+    "step3": {
+      "title": "Find IP Address",
+      "desc": "Use the following command to find your computer IP address:"
+    },
+    "step4": {
+      "title": "Remote Connection (Tailscale)",
+      "desc": "To connect away from home without port forwarding, use Tailscale on both your computer and phone:"
+    }
   }
 }

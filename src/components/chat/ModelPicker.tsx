@@ -1,8 +1,9 @@
-import { useState, useCallback, useMemo, useRef } from "react"
+import { useState, useCallback, useMemo, useRef, memo } from "react"
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import BottomSheet, { BottomSheetBackdrop, BottomSheetSectionList, BottomSheetTextInput } from "@gorhom/bottom-sheet"
 import { useTranslation } from "react-i18next"
+import { ModelLogo } from "./ModelLogo"
 
 interface ModelItem {
   providerID: string
@@ -25,7 +26,7 @@ interface Props {
   sheetRef: React.RefObject<BottomSheet | null>
 }
 
-export function ModelPicker({ providers, selected, isDark, onSelect, sheetRef }: Props) {
+export const ModelPicker = memo(function ModelPicker({ providers, selected, isDark, onSelect, sheetRef }: Props) {
   const { t } = useTranslation()
   const [search, setSearch] = useState("")
 
@@ -88,6 +89,8 @@ export function ModelPicker({ providers, selected, isDark, onSelect, sheetRef }:
       // static snapPoints (issue #104): without it the sheet can never open.
       enableDynamicSizing={false}
       enablePanDownToClose
+      enableContentPanningGesture={false}
+      enableHandlePanningGesture={true}
       keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
@@ -127,14 +130,16 @@ export function ModelPicker({ providers, selected, isDark, onSelect, sheetRef }:
               style={[s.row, isDark && s.rowDark, active && (isDark ? s.rowSelectedDark : s.rowSelected)]}
               onPress={() => handleSelect(item.providerID, item.modelID)}
               testID={`model-option-${item.providerID}-${item.modelID}`}
+              activeOpacity={0.7}
             >
+              <ModelLogo providerID={item.providerID} modelID={item.modelID} isDark={isDark} size={18} />
               <View style={s.rowText}>
                 <Text style={[s.rowName, isDark && s.textWhite]} numberOfLines={1}>
                   {item.modelName || item.modelID}
                 </Text>
                 <Text style={[s.rowProvider, isDark && s.metaDark]}>{item.providerName || item.providerID}</Text>
               </View>
-              {active && <Ionicons name="checkmark-circle" size={20} color="#8b5cf6" />}
+              {active && <Ionicons name="checkmark-circle" size={20} color={isDark ? "#ffffff" : "#0a0a0a"} />}
             </TouchableOpacity>
           )
         }}
@@ -143,7 +148,7 @@ export function ModelPicker({ providers, selected, isDark, onSelect, sheetRef }:
       />
     </BottomSheet>
   )
-}
+})
 
 const s = StyleSheet.create({
   sheet: { backgroundColor: "#ffffff" },
@@ -182,10 +187,11 @@ const s = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#e5e5e5",
+    gap: 12,
   },
   rowDark: { borderBottomColor: "#2a2a2a" },
-  rowSelected: { backgroundColor: "#f5f3ff" },
-  rowSelectedDark: { backgroundColor: "#1f1a2e" },
+  rowSelected: { backgroundColor: "#f0f0f0" },
+  rowSelectedDark: { backgroundColor: "#222222" },
   rowText: { flex: 1 },
   rowName: { fontSize: 15, fontWeight: "500", color: "#0a0a0a" },
   rowProvider: { fontSize: 12, color: "#999999", marginTop: 1 },

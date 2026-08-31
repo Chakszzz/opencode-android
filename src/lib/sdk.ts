@@ -33,7 +33,7 @@ export interface Session {
     created: number
     updated: number
     compacting?: number
-    archived?: number
+    archived?: number | null
   }
   summary?: {
     additions: number
@@ -322,11 +322,26 @@ export function createClient(config: ClientConfig) {
         const query = new URLSearchParams({ path: params.path ?? "." })
         return request<FileEntry[]>(config, `/file?${query.toString()}`)
       },
-      // Enumerate the server's filesystem roots (mounted drives, home dir)
-      // to seed the directory browser's pinned top-level entries. Resolves
-      // to null on servers that don't yet expose GET /file/roots (older
-      // opencode builds) so callers fall back to manual path entry instead
-      // of crashing; other errors propagate like any other request.
+      content: async (path: string): Promise<string> => {
+        const query = new URLSearchParams({ path })
+        const url = `${config.baseUrl}/file/content?${query.toString()}`
+        const headers = createHeaders(config)
+        const response = await fetchWithTimeout(url, { headers })
+        if (!response.ok) {
+          const error = await response.text()
+          throw apiErrorFor(response.status, `Failed to read file: ${response.status} - ${error}`)
+        }
+        const text = await response.text()
+        const contentType = response.headers.get("content-type")
+        if (contentType && contentType.includes("application/json")) {
+          try {
+            const json = JSON.parse(text)
+            if (typeof json?.content === "string") return json.content
+            if (typeof json === "string") return json
+          } catch {}
+        }
+        return text
+      },
       roots: async (): Promise<FileRoot[] | null> => {
         try {
           return await request<FileRoot[]>(config, "/file/roots")
@@ -381,7 +396,7 @@ export function createClient(config: ClientConfig) {
 
       delete: (sessionID: string) => request<void>(config, `/session/${sessionID}`, { method: "DELETE" }),
 
-      update: (sessionID: string, params: { title?: string; time?: { archived?: number } }) =>
+      update: (sessionID: string, params: { title?: string; time?: { archived?: number | null } }) =>
         request<Session>(config, `/session/${sessionID}`, {
           method: "PATCH",
           body: JSON.stringify(params),
@@ -446,6 +461,21 @@ export function createClient(config: ClientConfig) {
         }
       },
 
+      // Summarize/compact a session using AI compaction
+      summarize: (
+        sessionID: string,
+        params?: { providerID?: string; modelID?: string; auto?: boolean },
+      ): Promise<boolean> => {
+        const body: Record<string, unknown> = {}
+        if (params?.providerID) body.providerID = params.providerID
+        if (params?.modelID) body.modelID = params.modelID
+        if (params?.auto !== undefined) body.auto = params.auto
+        return request<boolean>(config, `/session/${sessionID}/summarize`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        })
+      },
+
       abort: (sessionID: string) => request<boolean>(config, `/session/${sessionID}/abort`, { method: "POST" }),
 
       diff: (sessionID: string, messageID?: string) => {
@@ -470,6 +500,53 @@ export function createClient(config: ClientConfig) {
       // Get child sessions (subagents) spawned by this session
       children: (sessionID: string) =>
         request<Session[]>(config, `/session/${sessionID}/children`),
+    },
+
+    auth: {
+      set: (params: {
+        providerID: string
+        key?: string
+        auth?: { type?: string; key?: string }
+      }) => {
+        const key = params.key || params.auth?.key
+        if (!key) {
+          throw new Error("API key is required")
+        }
+        return request<boolean>(config, `/auth/${params.providerID}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            type: params.auth?.type || "api",
+            key,
+          }),
+        })
+      },
+      remove: (providerID: string) =>
+        request<boolean>(config, `/auth/${providerID}`, {
+          method: "DELETE",
+        }),
+    },
+
+    mcp: {
+      status: () =>
+        request<
+          Record<
+            string,
+            {
+              status: "connected" | "disconnected" | "error"
+              error?: string
+            }
+          >
+        >(config, "/mcp"),
+
+      connect: (name: string) =>
+        request<boolean>(config, `/mcp/${name}/connect`, {
+          method: "POST",
+        }),
+
+      disconnect: (name: string) =>
+        request<boolean>(config, `/mcp/${name}/disconnect`, {
+          method: "POST",
+        }),
     },
 
     permission: {
@@ -530,11 +607,53 @@ export function createClient(config: ClientConfig) {
           default: Record<string, string>
           connected: string[]
         }>(config, "/provider"),
+
+      auth: (providerID: string, key: string) =>
+        request<boolean>(config, `/auth/${providerID}`, {
+          method: "PUT",
+          body: JSON.stringify({ type: "api", key }),
+        }),
+
+      oauth: (providerID: string) =>
+        request<{ url: string; method?: "auto" | "code" }>(config, `/provider/${providerID}/oauth/authorize`, {
+          method: "POST",
+        }),
     },
 
     config: {
-      get: () => request<unknown>(config, "/config"),
+      get: () =>
+        request<
+          Record<string, unknown> & {
+            username?: string
+            model?: string
+            small_model?: string
+            default_agent?: string
+            subagent_depth?: number
+            snapshot?: boolean
+            instructions?: string[] | string
+          }
+        >(config, "/config"),
+
+      update: (payload: Record<string, unknown>) =>
+        request<unknown>(config, "/config", {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        }),
     },
+
+    // List all available skills
+    skills: () => request<{ skills: Array<{ id: string; name: string; description?: string }> }>(config, "/skill"),
+
+    // Initialize session (create AGENTS.md)
+    init: (
+      sessionID: string,
+      params: { providerID: string; modelID: string; messageID: string },
+    ): Promise<boolean> =>
+      request<boolean>(config, `/session/${sessionID}/init`, {
+        method: "POST",
+        body: JSON.stringify(params),
+      }),
+
   }
 }
 

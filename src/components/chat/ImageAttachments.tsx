@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 
@@ -16,7 +17,7 @@ interface Props {
   onRemove: (index: number) => void
 }
 
-export function ImageAttachments({ attachments, isDark, onRemove }: Props) {
+export const ImageAttachments = memo(function ImageAttachments({ attachments, isDark, onRemove }: Props) {
   if (attachments.length === 0) return null
 
   return (
@@ -38,7 +39,7 @@ export function ImageAttachments({ attachments, isDark, onRemove }: Props) {
       </ScrollView>
     </View>
   )
-}
+})
 
 const s = StyleSheet.create({
   container: {

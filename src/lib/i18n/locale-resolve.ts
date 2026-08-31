@@ -2,7 +2,7 @@
 // so it's unit-testable with plain `node --test` (same split as
 // settings-merge.ts / store-review-policy.ts).
 
-export const SUPPORTED_LOCALES = ["en", "zh-Hans"] as const
+export const SUPPORTED_LOCALES = ["en", "id", "zh-Hans"] as const
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 
 export const FALLBACK_LOCALE: SupportedLocale = "en"
@@ -11,14 +11,15 @@ export const FALLBACK_LOCALE: SupportedLocale = "en"
 export type LocalePreference = "system" | SupportedLocale
 
 /**
- * Map one device locale tag (e.g. "zh-Hans-CN", "zh-CN", "en-US", "fr-FR") to
+ * Map one device locale tag (e.g. "id-ID", "in-ID", "zh-Hans-CN", "zh-CN", "en-US", "fr-FR") to
  * one of our supported catalogs, matching by language subtag since we don't
  * ship per-region variants. Returns null if we have no catalog for it.
  */
 export function matchSupportedLocale(tag: string): SupportedLocale | null {
   const lower = tag.toLowerCase()
-  if (lower.startsWith("zh")) return "zh-Hans"
-  if (lower.startsWith("en")) return "en"
+  if (lower === "id" || lower.startsWith("id-") || lower === "in" || lower.startsWith("in-")) return "id"
+  if (lower === "zh" || lower.startsWith("zh-")) return "zh-Hans"
+  if (lower === "en" || lower.startsWith("en-")) return "en"
   return null
 }
 

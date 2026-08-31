@@ -7,6 +7,7 @@ import { AnalyticsEvent, track } from "../lib/analytics"
 import { extractPromptFromParts, type PromptFromParts } from "../lib/prompt-from-parts"
 import { mergeIncomingMessage } from "../lib/message-merge"
 import { isColdSessionLoad, isLiveEventForSession } from "../lib/session-load-reconcile"
+import { syncQuickActions } from "../lib/quick-actions"
 
 // Helper to convert API response to our internal format
 function parseMessages(response: MessageWithParts[]): { messages: Message[]; parts: Record<string, Part[]> } {
@@ -23,6 +24,46 @@ function parseMessages(response: MessageWithParts[]): { messages: Message[]; par
 
 function pageSize(): number {
   return useSettings.getState().pageSize
+}
+
+// ── Part update batching ──────────────────────────────────────────────
+// During fast streaming the server fires many `message.part.updated` SSE events
+// per animation frame (text tokens, reasoning chunks, tool status flips). Each
+// one previously triggered a full Zustand set() → React re-render. This
+// accumulator collects rapid-fire parts and flushes them in a single set() via
+// queueMicrotask, reducing re-renders from N-per-tick to 1-per-tick.
+let pendingParts: Part[] = []
+let flushScheduled = false
+
+function enqueuePart(part: Part) {
+  pendingParts.push(part)
+  if (flushScheduled) return
+  flushScheduled = true
+  queueMicrotask(flushParts)
+}
+
+function flushParts() {
+  flushScheduled = false
+  const batch = pendingParts
+  pendingParts = []
+  if (batch.length === 0) return
+
+  useSessions.setState((state) => {
+    const next = { ...state.parts }
+    for (const part of batch) {
+      const key = part.messageID
+      const existing = next[key] || []
+      const idx = existing.findIndex((p) => p.id === part.id)
+      if (idx >= 0) {
+        const copy = [...existing]
+        copy[idx] = part
+        next[key] = copy
+      } else {
+        next[key] = [...existing, part]
+      }
+    }
+    return { parts: next, isLoading: false }
+  })
 }
 
 interface SessionsState {
@@ -44,8 +85,10 @@ interface SessionsState {
   loadSessions: () => Promise<void>
   selectSession: (sessionID: string, directory?: string) => Promise<void>
   loadOlderMessages: () => Promise<void>
-  createSession: (title?: string) => Promise<Session | null>
+  createSession: (title?: string, directory?: string) => Promise<Session | null>
   deleteSession: (sessionID: string) => Promise<void>
+  archiveSession: (sessionID: string) => Promise<void>
+  unarchiveSession: (sessionID: string) => Promise<void>
   sendMessage: (
     text: string,
     model?: { providerID: string; modelID: string },
@@ -120,6 +163,7 @@ export const useSessions = create<SessionsState>((set, get) => ({
       // its own directory into the session route so subsequent operations stay scoped.
       const sessions = await client.session.list({ roots: true, limit: 50 })
       set({ sessions, isLoading: false })
+      void syncQuickActions(sessions)
     } catch (error) {
       set({ error: "Failed to load sessions", isLoading: false })
     }
@@ -216,9 +260,8 @@ export const useSessions = create<SessionsState>((set, get) => ({
     }
   },
 
-  createSession: async (title) => {
-    const connState = useConnections.getState()
-    const client = connState.client
+  createSession: async (title, directory) => {
+    const client = clientFor(directory)
     if (!client) {
       set({ error: "No active connection" })
       return null
@@ -243,7 +286,9 @@ export const useSessions = create<SessionsState>((set, get) => ({
   },
 
   deleteSession: async (sessionID) => {
-    const session = get().sessions.find((s) => s.id === sessionID)
+    const session =
+      get().sessions.find((s) => s.id === sessionID) ??
+      (get().currentSession?.id === sessionID ? get().currentSession : undefined)
     const client = clientFor(session?.directory)
     if (!client) {
       set({ error: "No active connection" })
@@ -260,6 +305,59 @@ export const useSessions = create<SessionsState>((set, get) => ({
       }))
     } catch (error) {
       set({ error: "Failed to delete session" })
+    }
+  },
+
+  archiveSession: async (sessionID) => {
+    const session =
+      get().sessions.find((s) => s.id === sessionID) ??
+      (get().currentSession?.id === sessionID ? get().currentSession : undefined)
+    const client = clientFor(session?.directory)
+    if (!client) {
+      set({ error: "No active connection" })
+      return
+    }
+    try {
+      const now = Date.now()
+      await client.session.update(sessionID, { time: { archived: now } })
+      set((state) => ({
+        sessions: state.sessions.map((s) =>
+          s.id === sessionID ? { ...s, time: { ...s.time, archived: now } } : s,
+        ),
+        currentSession:
+          state.currentSession?.id === sessionID
+            ? { ...state.currentSession, time: { ...state.currentSession.time, archived: now } }
+            : state.currentSession,
+      }))
+    } catch (error) {
+      set({ error: "Failed to archive session" })
+      console.error("Failed to archive session:", error)
+    }
+  },
+
+  unarchiveSession: async (sessionID) => {
+    const session =
+      get().sessions.find((s) => s.id === sessionID) ??
+      (get().currentSession?.id === sessionID ? get().currentSession : undefined)
+    const client = clientFor(session?.directory)
+    if (!client) {
+      set({ error: "No active connection" })
+      return
+    }
+    try {
+      await client.session.update(sessionID, { time: { archived: null } })
+      set((state) => ({
+        sessions: state.sessions.map((s) =>
+          s.id === sessionID ? { ...s, time: { ...s.time, archived: undefined } } : s,
+        ),
+        currentSession:
+          state.currentSession?.id === sessionID
+            ? { ...state.currentSession, time: { ...state.currentSession.time, archived: undefined } }
+            : state.currentSession,
+      }))
+    } catch (error) {
+      set({ error: "Failed to unarchive session" })
+      console.error("Failed to unarchive session:", error)
     }
   },
 
@@ -466,21 +564,7 @@ export const useSessions = create<SessionsState>((set, get) => ({
         // Only handle parts for current session
         if (part.sessionID && part.sessionID !== currentSession.id) return
 
-        set((state) => {
-          const messageParts = state.parts[part.messageID] || []
-          const exists = messageParts.some((p) => p.id === part.id)
-          return {
-            parts: {
-              ...state.parts,
-              [part.messageID]: exists
-                ? messageParts.map((p) => (p.id === part.id ? part : p))
-                : [...messageParts, part],
-            },
-            // See message.updated above — a live part update is just as
-            // much proof of life as a message update.
-            isLoading: false,
-          }
-        })
+        enqueuePart(part)
         break
       }
 

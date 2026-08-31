@@ -86,18 +86,20 @@ export function configure(accessor: PreferencesAccessor) {
 // Setup & permissions
 // ---------------------------------------------------------------------------
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-})
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  })
+}
 
 export async function setup(): Promise<boolean> {
-  if (!Device.isDevice) return false
+  if (Platform.OS === "web" || !Device.isDevice) return false
 
   const { status: existing } = await Notifications.getPermissionsAsync()
   if (existing === "granted") {
@@ -113,6 +115,7 @@ export async function setup(): Promise<boolean> {
 }
 
 export async function granted(): Promise<boolean> {
+  if (Platform.OS === "web") return false
   const { status } = await Notifications.getPermissionsAsync()
   return status === "granted"
 }
@@ -132,6 +135,7 @@ async function ensureChannel() {
 // ---------------------------------------------------------------------------
 
 export async function send(payload: Payload) {
+  if (Platform.OS === "web") return
   const prefs = preferences()
   if (!prefs[payload.category]) return
   if (AppState.currentState === "active") return
@@ -165,6 +169,7 @@ export async function send(payload: Payload) {
 // ---------------------------------------------------------------------------
 
 export function onTap(handler: (data: NotificationData) => void) {
+  if (Platform.OS === "web") return () => {}
   const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
     const raw = response.notification.request.content.data
     const data = raw as unknown as NotificationData | undefined

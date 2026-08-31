@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, useRef } from "react"
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Alert,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
+import BottomSheet from "@gorhom/bottom-sheet"
 import { useTranslation } from "react-i18next"
 import { useAuth } from "../../src/stores/auth"
 import { useSettings } from "../../src/stores/settings"
@@ -22,9 +23,11 @@ import {
 } from "../../src/lib/notifications"
 import type { Category } from "../../src/lib/notifications"
 import { hasTelemetryConsent, setTelemetryConsent } from "../../src/lib/telemetry"
-import { PRIVACY_POLICY_URL } from "../../src/lib/links"
+import { PRIVACY_POLICY_URL, GITHUB_REPO_URL, DOCS_URL } from "../../src/lib/links"
 import { CURRENT_VERSION, checkForUpdate, type AvailableUpdate } from "../../src/lib/update-check"
 import type { LocalePreference } from "../../src/lib/i18n/locale-resolve"
+import { OpenCodeLogo } from "../../src/components/OpenCodeLogo"
+import { FeedbackSurveySheet } from "../../src/components/chat/FeedbackSurveySheet"
 
 function SettingRow({
   icon,
@@ -79,6 +82,7 @@ export default function SettingsScreen() {
   const { notifications, setNotification, locale, setLocale } = useSettings()
   const [osGranted, setOsGranted] = useState<boolean | null>(null)
   const [telemetryUpdating, setTelemetryUpdating] = useState(false)
+  const feedbackSheetRef = useRef<BottomSheet>(null)
 
   // Settings is where a user goes to ask "what am I running?". Answer it, and if
   // a newer build exists say so here too — the banner on the sessions list is
@@ -143,6 +147,7 @@ export default function SettingsScreen() {
   const localeLabels: Record<LocalePreference, string> = {
     system: t("settings.language.system"),
     en: t("settings.language.en"),
+    id: t("settings.language.id"),
     "zh-Hans": t("settings.language.zhHans"),
   }
 
@@ -150,6 +155,7 @@ export default function SettingsScreen() {
     Alert.alert(t("settings.language.title"), undefined, [
       { text: localeLabels.system, onPress: () => setLocale("system") },
       { text: localeLabels.en, onPress: () => setLocale("en") },
+      { text: localeLabels.id, onPress: () => setLocale("id") },
       { text: localeLabels["zh-Hans"], onPress: () => setLocale("zh-Hans") },
       { text: t("common.cancel"), style: "cancel" },
     ])
@@ -289,7 +295,7 @@ export default function SettingsScreen() {
           label={t("settings.about.github.label")}
           description={t("settings.about.github.description")}
           isDark={isDark}
-          onPress={() => Linking.openURL("https://github.com/anomalyco/opencode")}
+          onPress={() => Linking.openURL(GITHUB_REPO_URL)}
           right={<Ionicons name="open-outline" size={20} color={isDark ? "#666666" : "#999999"} />}
         />
         <SettingRow
@@ -297,15 +303,25 @@ export default function SettingsScreen() {
           label={t("settings.about.docs.label")}
           description={t("settings.about.docs.description")}
           isDark={isDark}
-          onPress={() => Linking.openURL("https://opencode.ai/docs")}
+          onPress={() => Linking.openURL(DOCS_URL)}
           right={<Ionicons name="open-outline" size={20} color={isDark ? "#666666" : "#999999"} />}
+        />
+        <SettingRow
+          icon="chatbubbles-outline"
+          label={t("settings.about.feedback.label")}
+          description={t("settings.about.feedback.description")}
+          isDark={isDark}
+          onPress={() => feedbackSheetRef.current?.expand()}
+          right={<Ionicons name="chevron-forward" size={18} color={isDark ? "#666666" : "#999999"} />}
         />
       </SettingSection>
 
       <View style={styles.footer}>
-        <Text style={[styles.footerText, isDark && styles.metaDark]}>{t("settings.footer.appName")}</Text>
-        <Text style={[styles.footerText, isDark && styles.metaDark]}>{t("settings.footer.tagline")}</Text>
+        <OpenCodeLogo height={18} showBadge={true} badgeText="Mobile" isDark={isDark} />
+        <Text style={[styles.footerText, isDark && styles.metaDark, { marginTop: 6 }]}>{t("settings.footer.tagline")}</Text>
       </View>
+
+      <FeedbackSurveySheet sheetRef={feedbackSheetRef} isDark={isDark} />
     </ScrollView>
   )
 }

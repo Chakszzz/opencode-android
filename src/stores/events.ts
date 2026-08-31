@@ -6,7 +6,6 @@ import { sanitizeBody } from "../lib/notify-format"
 import { statusFromPart } from "../lib/status-labels"
 import { addBreadcrumb } from "../lib/sentry"
 import { AnalyticsEvent, track } from "../lib/analytics"
-import { recordSuccessfulSession } from "../lib/store-review"
 import { isAuthError } from "../lib/api-error"
 import { isSessionActuallyIdle } from "../lib/session-status-reconcile"
 import type { Client, Part, Session, Message } from "../lib/sdk"
@@ -292,11 +291,6 @@ export const useEvents = create<EventsState>((set, get) => ({
                     sessionId: sessionID,
                   })
                 }
-                // Genuinely positive moment — count it toward the one-time
-                // store review prompt, but only if this run never errored
-                // (session.error doesn't touch sessionStatus, so an errored
-                // session still lands here via busy -> idle) and wasn't aborted.
-                if (!aborted && !erroredSessions.has(sessionID)) void recordSuccessfulSession()
               }
               break
             }
@@ -344,7 +338,22 @@ export const useEvents = create<EventsState>((set, get) => ({
             }
 
             case "session.error": {
-              const error = props.error as { message?: string } | undefined
+              const rawError = props.error
+              let errorMsg = "Session error occurred"
+              if (typeof rawError === "string") {
+                errorMsg = rawError
+              } else if (typeof rawError === "object" && rawError !== null) {
+                const errObj = rawError as any
+                if (typeof errObj.data?.message === "string") {
+                  errorMsg = errObj.data.message
+                } else if (typeof errObj.message === "string") {
+                  errorMsg = errObj.message
+                } else {
+                  errorMsg = `Error: ${errObj.name || JSON.stringify(errObj)}`
+                }
+              } else if (props.message) {
+                errorMsg = String(props.message)
+              }
               const sessionID = props.sessionID as string
               if (!sessionID) break
               // Mark so the eventual busy -> idle transition is not counted
@@ -355,7 +364,7 @@ export const useEvents = create<EventsState>((set, get) => ({
                 sending: { ...state.sending, [sessionID]: false },
                 // Surface error only if user is viewing this session
                 ...(state.currentSession?.id === sessionID
-                  ? { error: error?.message || "Session error occurred" }
+                  ? { error: errorMsg }
                   : {}),
               }))
               if (useSessions.getState().currentSession?.id === sessionID) {
@@ -364,7 +373,7 @@ export const useEvents = create<EventsState>((set, get) => ({
               notify({
                 category: "errors",
                 title: "Session error",
-                body: sanitizeBody(error?.message, "Something went wrong"),
+                body: sanitizeBody(errorMsg, "Something went wrong"),
                 sessionId: sessionID,
               })
               break

@@ -34,14 +34,7 @@ name: Activation E2E (Maestro)
 # on the harness rather than the app.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "app/**"
-      - "src/**"
-      - "tests/fixtures/**"
-      - ".maestro/**"
-      - ".github/workflows/activation-e2e.yml"
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
@@ -50,7 +43,6 @@ on:
       - "tests/fixtures/**"
       - ".maestro/**"
       - ".github/workflows/activation-e2e.yml"
-  workflow_dispatch: {}
 
 jobs:
   activation-e2e:
@@ -101,8 +93,8 @@ jobs:
         # shares — the cache key/restore-keys are identical): the restore-keys
         # prefix fallback can restore a generated autolinking tree from a
         # previous package id, making compileReleaseJavaWithJavac fail against
-        # the old package (ai.opencode.mobile vs cc.agentlabs.opencode). Delete
-        # generated sources so prebuild + Gradle regenerate them.
+        # the old package. Delete generated sources so prebuild + Gradle
+        # regenerate them for com.erprj.opencode.
         run: rm -rf android/app/build/generated android/build/generated android/app/build/intermediates
 
       - name: Install Maestro CLI

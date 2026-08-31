@@ -52,6 +52,10 @@
       "docs": {
         "label": "文档",
         "description": "了解如何使用 OpenCode"
+      },
+      "feedback": {
+        "label": "发送反馈",
+        "description": "帮助我们改进 OpenCode Android"
       }
     },
     "language": {
@@ -59,6 +63,7 @@
       "title": "选择语言",
       "system": "跟随系统",
       "en": "English",
+      "id": "印度尼西亚语",
       "zhHans": "简体中文"
     },
     "footer": {
@@ -95,7 +100,9 @@
     },
     "actions": {
       "editMessage": "编辑消息",
-      "replace": "替换"
+      "replace": "替换",
+      "fork": "从此消息分支会话",
+      "forkPrefix": "分支"
     },
     "alerts": {
       "messageActionsTitle": "消息操作",
@@ -122,7 +129,9 @@
       "imageFailedTitle": "图片未添加",
       "imageFailedMessage": "一张或多张图片无法处理。请尝试其他照片。",
       "speechErrorTitle": "语音输入失败",
-      "speechErrorMessage": "无法使用语音输入。请检查麦克风权限后重试。"
+      "speechErrorMessage": "无法使用语音输入。请检查麦克风权限后重试。",
+      "forkFailedTitle": "分支失败",
+      "forkFailedMessage": "无法分支该会话。请重试。"
     }
   },
   "connection": {
@@ -245,6 +254,7 @@
   },
   "sessionsList": {
     "untitledSession": "未命名会话",
+    "searchPlaceholder": "搜索会话...",
     "time": {
       "justNow": "刚刚",
       "minutesAgo": "{{count}} 分钟前",
@@ -253,7 +263,13 @@
     },
     "filesCount": "{{count}} 个文件",
     "actions": {
-      "rename": "重命名"
+      "rename": "重命名",
+      "archive": "归档会话",
+      "unarchive": "取消归档"
+    },
+    "tabs": {
+      "active": "活跃 ({{count}})",
+      "archived": "已归档 ({{count}})"
     },
     "alerts": {
       "renameFailedTitle": "重命名失败",
@@ -331,7 +347,7 @@
     "bullets": {
       "deviceInfo": "设备型号、系统版本、应用版本",
       "stackTraces": "崩溃堆栈跟踪（不含变量值）",
-      "usageEvents": "匿名使用事件（打开应用、连接尝试、发送消息）— 发送至 PostHog EU",
+      "usageEvents": "匿名使用事件（打开应用、连接尝试、发送消息）— 发送至 PostHog",
       "noCode": "您的代码、提示词或聊天消息",
       "noServerUrls": "服务器地址或身份验证令牌"
     },
@@ -401,7 +417,10 @@
       "thisFolderFallback": "此文件夹"
     },
     "reasoningBlock": {
-      "label": "思考中"
+      "thinking": "思考中...",
+      "thinkingWithDuration": "思考中 ({{duration}}秒)...",
+      "thoughtWithDuration": "已思考 {{duration}}秒",
+      "thoughtProcess": "思考过程"
     },
     "toolCallCard": {
       "fallbackTitle": "工具",
@@ -434,6 +453,12 @@
         "hoursAgo": "{{count}} 小时前",
         "daysAgo": "{{count}} 天前"
       }
+    },
+    "todo": {
+      "title": "任务与待办",
+      "emptyTitle": "暂无跟踪的任务",
+      "emptyDesc": "OpenCode 在规划复杂更改时会自动创建并跟踪任务清单。",
+      "noMatch": "无匹配的任务"
     }
   },
   "demo": {
@@ -451,5 +476,41 @@
     "action": "去获取",
     "dismiss": "暂不",
     "upToDate": "已是最新"
+  },
+  "feedback": {
+    "title": "反馈与问卷",
+    "thankYou": "感谢您的反馈！",
+    "submittedNotice": "您的回复已提交，感谢帮助我们改进应用。",
+    "selectOption": "请选择一个选项：",
+    "categoryTitle": "反馈分类",
+    "categories": {
+      "general": "通用",
+      "bug": "问题反馈",
+      "feature": "功能建议",
+      "praise": "赞赏"
+    },
+    "ratingTitle": "您的使用体验如何？",
+    "commentsTitle": "详细意见（可选）",
+    "commentsPlaceholder": "分享您的想法、建议或遇到的问题...",
+    "submit": "提交反馈"
+  },
+  "setupGuide": {
+    "title": "服务器配置指南",
+    "step1": {
+      "title": "在电脑上安装 OpenCode",
+      "desc": "在 Mac、Linux 或 Windows (WSL) 终端中运行以下命令："
+    },
+    "step2": {
+      "title": "启动服务器",
+      "desc": "在终端中打开项目目录，然后运行："
+    },
+    "step3": {
+      "title": "查找 IP 地址",
+      "desc": "使用以下命令查找电脑的局域网 IP 地址："
+    },
+    "step4": {
+      "title": "远程连接（Tailscale）",
+      "desc": "如需在外网连接而无需端口映射，请在电脑和手机上使用 Tailscale："
+    }
   }
 }

@@ -1,5 +1,5 @@
-import { useMemo } from "react"
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Keyboard, Platform } from "react-native"
+import { useMemo, memo } from "react"
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useTranslation } from "react-i18next"
 
@@ -18,7 +18,7 @@ interface Props {
   onSelect: (cmd: SlashCommand) => void
 }
 
-export function SlashPopover({ query, commands, isDark, onSelect }: Props) {
+export const SlashPopover = memo(function SlashPopover({ query, commands, isDark, onSelect }: Props) {
   const { t } = useTranslation()
   const filtered = useMemo(() => {
     const q = query.toLowerCase()
@@ -29,15 +29,22 @@ export function SlashPopover({ query, commands, isDark, onSelect }: Props) {
 
   return (
     <View style={[s.popover, isDark && s.popoverDark]}>
-      <ScrollView keyboardShouldPersistTaps="always" style={s.scroll}>
-        {filtered.map((cmd) => (
-          <TouchableOpacity key={cmd.trigger} style={[s.item, isDark && s.itemDark]} onPress={() => onSelect(cmd)}>
-            <Ionicons
-              name={cmd.icon as any}
-              size={18}
-              color={cmd.type === "custom" ? "#8b5cf6" : isDark ? "#888888" : "#666666"}
-            />
-            <View style={s.textCol}>
+      <ScrollView keyboardShouldPersistTaps="always" style={s.scroll} bounces={false}>
+        {filtered.map((cmd, idx) => (
+          <TouchableOpacity
+            key={`${cmd.type}-${cmd.trigger}-${idx}`}
+            style={[s.item, isDark && s.itemDark]}
+            onPress={() => onSelect(cmd)}
+            activeOpacity={0.7}
+          >
+            <View style={[s.iconBox, isDark && s.iconBoxDark]}>
+              <Ionicons
+                name={cmd.icon as any}
+                size={14}
+                color={isDark ? "#ffffff" : "#0a0a0a"}
+              />
+            </View>
+            <View style={s.textRow}>
               <Text style={[s.trigger, isDark && s.textWhite]}>/{cmd.trigger}</Text>
               {cmd.description && (
                 <Text style={[s.desc, isDark && s.metaDark]} numberOfLines={1}>
@@ -47,7 +54,9 @@ export function SlashPopover({ query, commands, isDark, onSelect }: Props) {
             </View>
             {cmd.type === "custom" && (
               <View style={[s.badge, isDark && s.badgeDark]}>
-                <Text style={s.badgeText}>{t("chat.slashPopover.customBadge")}</Text>
+                <Text style={[s.badgeText, isDark && s.badgeTextDark]}>
+                  {t("chat.slashPopover.customBadge") || "Custom"}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
@@ -55,36 +64,77 @@ export function SlashPopover({ query, commands, isDark, onSelect }: Props) {
       </ScrollView>
     </View>
   )
-}
+})
 
 const s = StyleSheet.create({
   popover: {
     backgroundColor: "#ffffff",
     borderTopWidth: 1,
     borderTopColor: "#e5e5e5",
-    maxHeight: 220,
+    maxHeight: 190,
   },
-  popoverDark: { backgroundColor: "#1a1a1a", borderTopColor: "#2a2a2a" },
-  scroll: { paddingVertical: 4 },
+  popoverDark: {
+    backgroundColor: "#161616",
+    borderTopColor: "#262626",
+  },
+  scroll: { paddingVertical: 2 },
   item: {
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#f0f0f0",
     gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
   },
-  itemDark: {},
-  textCol: { flex: 1 },
-  trigger: { fontSize: 14, fontWeight: "600", color: "#0a0a0a" },
+  itemDark: {
+    borderBottomColor: "#222222",
+  },
+  iconBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconBoxDark: {
+    backgroundColor: "#262626",
+  },
+  textRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  trigger: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0a0a0a",
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+  },
   textWhite: { color: "#ffffff" },
-  desc: { fontSize: 12, color: "#999999", marginTop: 1 },
-  metaDark: { color: "#666666" },
+  desc: {
+    flex: 1,
+    fontSize: 12,
+    color: "#777777",
+  },
+  metaDark: { color: "#888888" },
   badge: {
-    backgroundColor: "#f3e8ff",
+    backgroundColor: "#f0f0f0",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
-  badgeDark: { backgroundColor: "#2a1a3e" },
-  badgeText: { fontSize: 10, color: "#8b5cf6", fontWeight: "600" },
+  badgeDark: {
+    backgroundColor: "#2a2a2a",
+  },
+  badgeText: {
+    fontSize: 10,
+    color: "#555555",
+    fontWeight: "600",
+  },
+  badgeTextDark: {
+    color: "#cccccc",
+  },
 })

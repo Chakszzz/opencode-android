@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, memo } from "react"
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useTranslation } from "react-i18next"
@@ -16,6 +16,18 @@ interface Props {
   onLoadAll: () => void
   onScrollToTop: () => void
   onClose: () => void
+}
+
+const EMPTY_STATS = {
+  cost: 0,
+  input: 0,
+  output: 0,
+  reasoning: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+  total: 0,
+  percent: 0,
+  context: 0,
 }
 
 function compact(n: number): string {
@@ -40,7 +52,7 @@ function formatTime(ts: number, t: (key: string, opts?: Record<string, unknown>)
   return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" })
 }
 
-export function SessionInfo({
+export const SessionInfo = memo(function SessionInfo({
   session,
   messages,
   providers,
@@ -55,6 +67,7 @@ export function SessionInfo({
   const { t } = useTranslation()
   // Match TUI: last assistant message tokens (context window), cumulative cost
   const stats = useMemo(() => {
+    if (!visible) return EMPTY_STATS
     let cost = 0
     let last: Message | null = null
 
@@ -83,7 +96,7 @@ export function SessionInfo({
     const percent = context > 0 ? Math.round((total / context) * 100) : 0
 
     return { cost, input, output, reasoning, cacheRead, cacheWrite, total, percent, context }
-  }, [messages, providers])
+  }, [messages, providers, visible])
 
   if (!visible) return null
 
@@ -137,7 +150,7 @@ export function SessionInfo({
             <TokenPill label={t("chat.sessionInfo.pills.think")} value={stats.reasoning} color="#f59e0b" isDark={isDark} />
           )}
           {stats.cacheRead > 0 && (
-            <TokenPill label={t("chat.sessionInfo.pills.cacheRead")} value={stats.cacheRead} color="#8b5cf6" isDark={isDark} />
+            <TokenPill label={t("chat.sessionInfo.pills.cacheRead")} value={stats.cacheRead} color="#6b7280" isDark={isDark} />
           )}
           {stats.cacheWrite > 0 && (
             <TokenPill
@@ -200,9 +213,9 @@ export function SessionInfo({
       </View>
     </View>
   )
-}
+})
 
-function MetaItem({ icon, label, value, isDark }: { icon: string; label: string; value: string; isDark: boolean }) {
+const MetaItem = memo(function MetaItem({ icon, label, value, isDark }: { icon: string; label: string; value: string; isDark: boolean }) {
   return (
     <View style={s.metaItem}>
       <Ionicons name={icon as any} size={12} color={isDark ? "#555555" : "#999999"} />
@@ -210,9 +223,9 @@ function MetaItem({ icon, label, value, isDark }: { icon: string; label: string;
       <Text style={[s.metaValue, isDark && s.metaValueDark]}>{value}</Text>
     </View>
   )
-}
+})
 
-function TokenPill({ label, value, color, isDark }: { label: string; value: number; color: string; isDark: boolean }) {
+const TokenPill = memo(function TokenPill({ label, value, color, isDark }: { label: string; value: number; color: string; isDark: boolean }) {
   return (
     <View style={[s.pill, { borderColor: color + "40" }, isDark && { backgroundColor: color + "15" }]}>
       <View style={[s.dot, { backgroundColor: color }]} />
@@ -220,7 +233,7 @@ function TokenPill({ label, value, color, isDark }: { label: string; value: numb
       <Text style={[s.pillValue, isDark && s.textDark]}>{compact(value)}</Text>
     </View>
   )
-}
+})
 
 const s = StyleSheet.create({
   container: {

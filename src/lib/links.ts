@@ -1,2 +1,5 @@
-export const PRIVACY_POLICY_URL = "https://dzianisv.github.io/opencode-mobile/privacy/"
-export const SETUP_GUIDE_URL = "https://dzianisv.github.io/opencode-mobile/guide/"
+export const GITHUB_REPO_URL = "https://github.com/Chakszzz/opencode-android"
+export const RELEASES_URL = "https://github.com/Chakszzz/opencode-android/releases"
+export const PRIVACY_POLICY_URL = "https://raw.githubusercontent.com/Chakszzz/opencode-android/main/PRIVACY.md"
+export const SETUP_GUIDE_URL = "https://github.com/Chakszzz/opencode-android#quick-start"
+export const DOCS_URL = "https://opencode.ai/docs"

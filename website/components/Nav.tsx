@@ -19,7 +19,7 @@ export default function Nav() {
         <div className="hidden md:flex items-center gap-6">
           {[
             { href: 'https://opencode.ai', label: 'Docs', external: true },
-            { href: 'https://github.com/dzianisv/opencode-mobile', label: 'GitHub', external: true },
+            { href: 'https://github.com/Chakszzz/opencode-android', label: 'GitHub', external: true },
             { href: '/beta', label: 'Beta' },
           ].map((link) => (
             <Link
@@ -33,13 +33,13 @@ export default function Nav() {
             </Link>
           ))}
           <a
-            href="https://play.google.com/store/apps/details?id=cc.agentlabs.opencode"
+            href="https://github.com/Chakszzz/opencode-android/releases"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm font-medium px-4 py-2 rounded-lg transition-all"
             style={{ backgroundColor: 'var(--fg)', color: 'var(--bg)' }}
           >
-            Download
+            Download APK
           </a>
         </div>
 
@@ -67,9 +67,9 @@ export default function Nav() {
         <div className="md:hidden border-t px-4 py-4 space-y-3" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)' }}>
           {[
             { href: 'https://opencode.ai', label: 'Docs', external: true },
-            { href: 'https://github.com/dzianisv/opencode-mobile', label: 'GitHub', external: true },
+            { href: 'https://github.com/Chakszzz/opencode-android', label: 'GitHub', external: true },
             { href: '/beta', label: 'Join Beta' },
-            { href: 'https://play.google.com/store/apps/details?id=cc.agentlabs.opencode', label: 'Download', external: true },
+            { href: 'https://github.com/Chakszzz/opencode-android/releases', label: 'Download APK', external: true },
           ].map((link) => (
             <Link
               key={link.href}

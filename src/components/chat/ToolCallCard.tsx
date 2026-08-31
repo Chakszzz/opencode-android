@@ -1,9 +1,12 @@
-import { useState, useCallback } from "react"
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Platform } from "react-native"
+import { useState, useCallback, memo } from "react"
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Platform, LayoutAnimation, Vibration } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
+import * as Clipboard from "expo-clipboard"
+import { useRouter } from "expo-router"
 import { useTranslation } from "react-i18next"
 import type { Part } from "../../lib/sdk"
 import { DiffView } from "./DiffView"
+import { getToolPresentation } from "./tool-presentation"
 
 const TOOL_ICONS: Record<string, string> = {
   read: "glasses-outline",
@@ -28,7 +31,7 @@ const mono = Platform.OS === "ios" ? "Menlo" : "monospace"
 function statusColor(status: string): string {
   if (status === "completed") return "#22c55e"
   if (status === "error") return "#ef4444"
-  if (status === "running") return "#f59e0b"
+  if (status === "running") return "#d97706"
   return "#888888"
 }
 
@@ -42,7 +45,7 @@ function BashDetail({ input, output, isDark }: { input: unknown; output: unknown
       {typeof cmd === "string" && (
         <View style={[s.codeBlock, isDark && s.codeBlockDark]}>
           <Text style={[s.codePre, isDark && s.codePteDark]} selectable>
-            <Text style={s.codePrompt}>$ </Text>
+            <Text style={[s.codePrompt, isDark && s.codePromptDark]}>$ </Text>
             {cmd}
           </Text>
         </View>
@@ -102,7 +105,6 @@ function EditDetail({ input, output, isDark }: { input: unknown; output: unknown
   const replacement =
     typeof input === "object" && input !== null ? (input as Record<string, unknown>).newString : undefined
 
-  // If we have old/new strings, show as diff
   if (typeof old === "string" && typeof replacement === "string") {
     return (
       <View style={s.detailSection}>
@@ -116,7 +118,6 @@ function EditDetail({ input, output, isDark }: { input: unknown; output: unknown
     )
   }
 
-  // Fallback: show raw output
   const text = typeof output === "string" ? output : JSON.stringify(output, null, 2)
   return (
     <View style={s.detailSection}>
@@ -138,14 +139,16 @@ function EditDetail({ input, output, isDark }: { input: unknown; output: unknown
 
 function PatchDetail({ input, isDark }: { input: unknown; isDark: boolean }) {
   const patch = typeof input === "object" && input !== null ? (input as Record<string, unknown>).patch : undefined
+  const file = typeof input === "object" && input !== null ? (input as Record<string, unknown>).filePath : undefined
   return (
     <View style={s.detailSection}>
+      {typeof file === "string" && (
+        <Text style={[s.detailFile, isDark && s.detailFileDark]} selectable numberOfLines={2}>
+          {file}
+        </Text>
+      )}
       {typeof patch === "string" && patch.length > 0 && (
-        <View style={[s.codeBlock, isDark && s.codeBlockDark]}>
-          <Text style={[s.codePre, isDark && s.codePteDark]} selectable numberOfLines={60}>
-            {patch}
-          </Text>
-        </View>
+        <DiffView patch={patch} isDark={isDark} />
       )}
     </View>
   )
@@ -181,7 +184,7 @@ function WebfetchDetail({ input, isDark }: { input: unknown; isDark: boolean }) 
   return (
     <View style={s.detailSection}>
       {typeof url === "string" && (
-        <Text style={[s.detailFile, isDark && s.detailFileDark, { color: "#8b5cf6" }]} selectable numberOfLines={3}>
+        <Text style={[s.detailFile, isDark && s.detailFileDark, { color: isDark ? "#60a5fa" : "#3b82f6" }]} selectable numberOfLines={3}>
           {url}
         </Text>
       )}
@@ -189,19 +192,47 @@ function WebfetchDetail({ input, isDark }: { input: unknown; isDark: boolean }) 
   )
 }
 
-function TaskDetail({ input, isDark }: { input: unknown; isDark: boolean }) {
+function TaskDetail({ input, metadata, isDark }: { input: unknown; metadata?: unknown; isDark: boolean }) {
+  const router = useRouter()
   const description =
     typeof input === "object" && input !== null ? (input as Record<string, unknown>).description : undefined
   const prompt = typeof input === "object" && input !== null ? (input as Record<string, unknown>).prompt : undefined
+  const subagentType =
+    typeof input === "object" && input !== null ? (input as Record<string, unknown>).subagent_type : undefined
+  const sessionId =
+    typeof metadata === "object" && metadata !== null ? (metadata as Record<string, unknown>).sessionId : undefined
+
   return (
     <View style={s.detailSection}>
-      {typeof description === "string" && <Text style={[s.detailMeta, isDark && s.detailMetaDark]}>{description}</Text>}
+      {typeof subagentType === "string" && (
+        <View style={[s.subagentChip, isDark && s.subagentChipDark]}>
+          <Ionicons name="git-branch-outline" size={12} color={isDark ? "#ffffff" : "#0a0a0a"} />
+          <Text style={[s.subagentChipText, isDark && s.textWhite]}>
+            Agent: {subagentType.toUpperCase()}
+          </Text>
+        </View>
+      )}
+      {typeof description === "string" && (
+        <Text style={[s.detailMeta, isDark && s.detailMetaDark]}>{description}</Text>
+      )}
       {typeof prompt === "string" && prompt.length > 0 && (
         <View style={[s.codeBlock, isDark && s.codeBlockDark, { marginTop: 6 }]}>
           <Text style={[s.codePre, isDark && s.codePteDark]} selectable numberOfLines={20}>
             {prompt}
           </Text>
         </View>
+      )}
+      {typeof sessionId === "string" && sessionId.length > 0 && (
+        <TouchableOpacity
+          style={[s.subagentLinkBtn, isDark && s.subagentLinkBtnDark]}
+          onPress={() => router.push(`/session/${sessionId}`)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="open-outline" size={13} color={isDark ? "#ffffff" : "#0a0a0a"} />
+          <Text style={[s.subagentLinkBtnText, isDark && s.textWhite]}>
+            Open Subagent Session ({sessionId.slice(0, 8)}...)
+          </Text>
+        </TouchableOpacity>
       )}
     </View>
   )
@@ -278,7 +309,7 @@ function ToolDetail({ tool, isDark }: { tool: Part; isDark: boolean }) {
     case "websearch":
       return <WebfetchDetail input={input} isDark={isDark} />
     case "task":
-      return <TaskDetail input={input} isDark={isDark} />
+      return <TaskDetail input={input} metadata={(tool.state as any)?.metadata} isDark={isDark} />
     case "todowrite":
       return <TodoDetail input={input} isDark={isDark} />
     default:
@@ -312,147 +343,340 @@ interface Props {
   isDark: boolean
 }
 
-export function ToolCallCard({ tool, isDark }: Props) {
-  const { t } = useTranslation()
+export const ToolCallCard = memo(function ToolCallCard({ tool, isDark }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const [copied, setCopied] = useState(false)
   const icon = (tool.tool && TOOL_ICONS[tool.tool]) || "extension-puzzle-outline"
   const status = tool.state?.status || "pending"
   const color = statusColor(status)
   const error = tool.state?.error?.message
   const elapsed = duration(tool.state?.time?.start, tool.state?.time?.end)
-  const hasDetail = tool.state?.input !== undefined || tool.state?.output !== undefined || error
+  const hasDetail = tool.state?.input !== undefined || tool.state?.output !== undefined || !!error
+
+  const presentation = getToolPresentation(tool)
 
   const toggle = useCallback(() => {
-    if (hasDetail) setExpanded((v) => !v)
+    if (hasDetail) {
+      try {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+        Vibration.vibrate(8)
+      } catch {}
+      setExpanded((v) => !v)
+    }
   }, [hasDetail])
 
+  const handleLongPress = useCallback(async () => {
+    if (!presentation.copyText) return
+    try {
+      Vibration.vibrate(20)
+    } catch {}
+    await Clipboard.setStringAsync(presentation.copyText)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [presentation.copyText])
+
   return (
-    <TouchableOpacity
-      style={[
-        s.card,
-        isDark && s.cardDark,
-        status === "error" && s.cardError,
-        status === "error" && isDark && s.cardErrorDark,
-      ]}
-      onPress={toggle}
-      activeOpacity={hasDetail ? 0.7 : 1}
-    >
-      {/* Header row */}
-      <View style={s.header}>
-        <View style={s.headerLeft}>
-          <Ionicons name={icon as any} size={16} color={color} />
-          <Text style={[s.name, isDark && s.nameDark]} numberOfLines={1}>
-            {tool.state?.title || tool.tool || t("chat.toolCallCard.fallbackTitle")}
-          </Text>
-          {elapsed && <Text style={[s.elapsed, isDark && s.elapsedDark]}>{elapsed}</Text>}
+    <View style={s.wrapper}>
+      {/* Sleek compact tool row */}
+      <TouchableOpacity
+        style={[
+          s.row,
+          isDark ? s.rowDark : s.rowLight,
+          status === "error" && (isDark ? s.rowErrorDark : s.rowErrorLight),
+        ]}
+        onPress={toggle}
+        onLongPress={handleLongPress}
+        activeOpacity={hasDetail ? 0.7 : 1}
+        accessibilityRole="button"
+        accessibilityLabel={`${presentation.summary} ${presentation.detail || ""}`}
+        accessibilityHint="Tap to expand details. Long press to copy."
+      >
+        {/* Left: Tool icon */}
+        <View style={s.iconWrap}>
+          <Ionicons name={icon as any} size={14} color={color} />
         </View>
-        <View style={s.headerRight}>
+
+        {/* Center: Action Summary + Detail */}
+        <View style={s.textWrap}>
+          <Text style={[s.actionSummary, isDark && s.textWhite]} numberOfLines={1}>
+            {presentation.summary}
+            {presentation.detail ? (
+              <Text style={[s.actionDetail, isDark && s.actionDetailDark]}> {presentation.detail}</Text>
+            ) : null}
+          </Text>
+        </View>
+
+        {/* Right: Copied badge, elapsed time, status icon & chevron */}
+        <View style={s.metaWrap}>
+          {copied && (
+            <View style={[s.copiedBadge, isDark && s.copiedBadgeDark]}>
+              <Text style={s.copiedBadgeText}>Copied</Text>
+            </View>
+          )}
+
+          {elapsed && <Text style={[s.elapsed, isDark && s.elapsedDark]}>{elapsed}</Text>}
+
           {status === "running" && <ActivityIndicator size="small" color={color} />}
-          {status === "completed" && <Ionicons name="checkmark-circle" size={16} color="#22c55e" />}
-          {status === "error" && <Ionicons name="close-circle" size={16} color="#ef4444" />}
+          {status === "completed" && <Ionicons name="checkmark" size={14} color="#22c55e" />}
+          {status === "error" && <Ionicons name="close" size={14} color="#ef4444" />}
+
           {hasDetail && (
             <Ionicons
               name={expanded ? "chevron-up" : "chevron-down"}
-              size={16}
-              color={isDark ? "#666666" : "#999999"}
+              size={13}
+              color={isDark ? "#737373" : "#a3a3a3"}
             />
           )}
         </View>
-      </View>
+      </TouchableOpacity>
 
-      {/* Error banner */}
+      {/* Error banner if not expanded */}
       {error && !expanded && <ErrorBanner message={error} isDark={isDark} />}
 
-      {/* Expanded detail */}
+      {/* Expanded detail drawer attached below */}
       {expanded && (
-        <ScrollView style={s.detailScroll} nestedScrollEnabled showsVerticalScrollIndicator={false}>
-          {error && <ErrorBanner message={error} isDark={isDark} />}
-          <ToolDetail tool={tool} isDark={isDark} />
-        </ScrollView>
+        <View style={[s.drawer, isDark ? s.drawerDark : s.drawerLight]}>
+          <ScrollView style={s.detailScroll} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+            {error && <ErrorBanner message={error} isDark={isDark} />}
+            <ToolDetail tool={tool} isDark={isDark} />
+          </ScrollView>
+        </View>
       )}
-    </TouchableOpacity>
+    </View>
   )
-}
+})
 
 const s = StyleSheet.create({
-  card: {
-    backgroundColor: "#ffffff",
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
+  wrapper: {
+    marginTop: 4,
+    marginBottom: 2,
   },
-  cardDark: { backgroundColor: "#2a2a2a", borderColor: "#3a3a3a" },
-  cardError: { borderColor: "#fecaca" },
-  cardErrorDark: { borderColor: "#7f1d1d" },
-
-  header: {
+  row: {
+    minHeight: 32,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    gap: 6,
   },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  name: { fontSize: 13, fontWeight: "500", color: "#0a0a0a", flex: 1 },
-  nameDark: { color: "#e5e5e5" },
-  elapsed: { fontSize: 11, color: "#999999" },
-  elapsedDark: { color: "#666666" },
+  rowLight: {
+    backgroundColor: "#f9fafb",
+    borderColor: "#e5e7eb",
+  },
+  rowDark: {
+    backgroundColor: "#181818",
+    borderColor: "#262626",
+  },
+  rowErrorLight: {
+    borderColor: "#fca5a5",
+    backgroundColor: "#fef2f2",
+  },
+  rowErrorDark: {
+    borderColor: "#7f1d1d",
+    backgroundColor: "#201212",
+  },
+  iconWrap: {
+    width: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  textWrap: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  actionSummary: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#0a0a0a",
+  },
+  actionDetail: {
+    fontSize: 12,
+    fontWeight: "400",
+    color: "#6b7280",
+    fontFamily: mono,
+  },
+  actionDetailDark: {
+    color: "#9ca3af",
+  },
+  metaWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  copiedBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 3,
+    backgroundColor: "#dcfce7",
+  },
+  copiedBadgeDark: {
+    backgroundColor: "#064e3b",
+  },
+  copiedBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#16a34a",
+  },
+  elapsed: {
+    fontSize: 11,
+    color: "#888888",
+    fontFamily: mono,
+  },
+  elapsedDark: {
+    color: "#737373",
+  },
+  textWhite: {
+    color: "#ffffff",
+  },
+
+  // Attached drawer
+  drawer: {
+    marginLeft: 8,
+    paddingLeft: 10,
+    paddingTop: 6,
+    paddingBottom: 4,
+    borderLeftWidth: 2,
+  },
+  drawerLight: {
+    borderLeftColor: "#e5e7eb",
+  },
+  drawerDark: {
+    borderLeftColor: "#2e2e2e",
+  },
+  detailScroll: {
+    maxHeight: 280,
+  },
+  detailSection: {
+    marginTop: 2,
+  },
+  detailFile: {
+    fontSize: 12,
+    fontFamily: mono,
+    color: "#0969da",
+    marginBottom: 4,
+  },
+  detailFileDark: {
+    color: "#58a6ff",
+  },
+  detailMeta: {
+    fontSize: 12,
+    color: "#4b5563",
+    marginBottom: 4,
+  },
+  detailMetaDark: {
+    color: "#9ca3af",
+  },
+  codeBlock: {
+    backgroundColor: "#f3f4f6",
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  codeBlockDark: {
+    backgroundColor: "#141414",
+    borderColor: "#262626",
+  },
+  codePre: {
+    fontFamily: mono,
+    fontSize: 11,
+    lineHeight: 16,
+    color: "#1f2937",
+  },
+  codePteDark: {
+    color: "#e5e7eb",
+  },
+  codePrompt: {
+    color: "#16a34a",
+    fontWeight: "700",
+  },
+  codePromptDark: {
+    color: "#22c55e",
+  },
+
+  // Subagents
+  subagentChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    backgroundColor: "#e5e7eb",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: 6,
+  },
+  subagentChipDark: {
+    backgroundColor: "#262626",
+  },
+  subagentChipText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#0a0a0a",
+  },
+  subagentLinkBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 4,
+    alignSelf: "flex-start",
+  },
+  subagentLinkBtnDark: {
+    backgroundColor: "#222222",
+  },
+  subagentLinkBtnText: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#0a0a0a",
+  },
+
+  // Todo
+  todoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 2,
+  },
+  todoText: {
+    fontSize: 12,
+    color: "#374151",
+    flex: 1,
+  },
+  todoTextDark: {
+    color: "#d1d5db",
+  },
+  todoDone: {
+    textDecorationLine: "line-through",
+    color: "#9ca3af",
+  },
 
   // Error
   errorBanner: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 6,
-    marginTop: 8,
-    padding: 8,
+    marginTop: 4,
+    padding: 6,
     backgroundColor: "#fef2f2",
-    borderRadius: 6,
-  },
-  errorBannerDark: { backgroundColor: "#1a0a0a" },
-  errorText: { fontSize: 12, color: "#dc2626", flex: 1, lineHeight: 18 },
-
-  // Detail
-  detailScroll: { maxHeight: 300, marginTop: 8 },
-  detailSection: { gap: 4 },
-  detailFile: {
-    fontSize: 12,
-    fontFamily: mono,
-    color: "#6d28d9",
-    backgroundColor: "#f5f3ff",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
     borderRadius: 4,
-    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#fca5a5",
   },
-  detailFileDark: { color: "#a78bfa", backgroundColor: "#1a1a2e" },
-  detailMeta: { fontSize: 12, color: "#666666", lineHeight: 18 },
-  detailMetaDark: { color: "#888888" },
-
-  // Code block
-  codeBlock: {
-    backgroundColor: "#f8f8f8",
-    borderRadius: 6,
-    padding: 10,
+  errorBannerDark: {
+    backgroundColor: "#221111",
+    borderColor: "#7f1d1d",
   },
-  codeBlockDark: { backgroundColor: "#1a1a1a" },
-  codePre: {
-    fontSize: 12,
-    fontFamily: mono,
-    color: "#0a0a0a",
-    lineHeight: 18,
+  errorText: {
+    fontSize: 11,
+    color: "#ef4444",
+    flex: 1,
+    lineHeight: 15,
   },
-  codePteDark: { color: "#e5e5e5" },
-  codePrompt: { color: "#8b5cf6", fontWeight: "700" },
-
-  // Todo
-  todoRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    paddingVertical: 3,
-  },
-  todoText: { fontSize: 13, color: "#0a0a0a", flex: 1, lineHeight: 20 },
-  todoTextDark: { color: "#e5e5e5" },
-  todoDone: { textDecorationLine: "line-through", color: "#999999" },
 })

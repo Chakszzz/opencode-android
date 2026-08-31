@@ -13,6 +13,8 @@ jobs:
     env:
       EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
       EXPO_PUBLIC_POSTHOG_KEY: ${{ secrets.EXPO_PUBLIC_POSTHOG_KEY }}
+      EXPO_PUBLIC_POSTHOG_HOST: ${{ secrets.EXPO_PUBLIC_POSTHOG_HOST }}
+      FDROID_REPO_KEYSTORE_B64: ${{ secrets.FDROID_REPO_KEYSTORE_B64 }}
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
       SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
@@ -37,19 +39,14 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Cache Gradle
-        uses: actions/cache@v5
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            android/.gradle
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+          gradle-version: wrapper
+          cache-read-only: false
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci || npm install --legacy-peer-deps
 
       - name: Check release version metadata
         run: npm run check:versions
@@ -159,6 +156,7 @@ jobs:
         run: pip install "fdroidserver==2.4.4" "androguard==4.1.3"
 
       - name: Setup F-Droid repo
+        if: ${{ env.RELEASE_STORE_FILE != '' && env.FDROID_REPO_KEYSTORE_B64 != '' }}
         id: fdroid-setup
         run: |
           FDROID_DIR="$HOME/fdroid-repo"
@@ -168,7 +166,7 @@ jobs:
           echo "${{ secrets.FDROID_REPO_KEYSTORE_B64 }}" | base64 -d > "$FDROID_DIR/repo-keystore.jks"
 
           cat > "$FDROID_DIR/config.yml" << CONFIGEOF
-          repo_url: https://dzianisv.github.io/opencode-mobile/fdroid/repo
+          repo_url: https://chakszzz.github.io/opencode-android/fdroid/repo
           repo_name: OpenCode Mobile
           repo_description: OpenCode Mobile - AI coding assistant companion app
           keystore: $FDROID_DIR/repo-keystore.jks
@@ -182,11 +180,13 @@ jobs:
           echo "fdroid-dir=$FDROID_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Generate F-Droid repo index
+        if: ${{ env.RELEASE_STORE_FILE != '' && env.FDROID_REPO_KEYSTORE_B64 != '' }}
         run: |
           cd "${{ steps.fdroid-setup.outputs.fdroid-dir }}"
           fdroid update --create-metadata
 
       - name: Verify F-Droid repo index was generated
+        if: ${{ env.RELEASE_STORE_FILE != '' && env.FDROID_REPO_KEYSTORE_B64 != '' }}
         run: |
           IDX="${{ steps.fdroid-setup.outputs.fdroid-dir }}/repo/index.xml"
           if [[ ! -f "$IDX" ]]; then
@@ -197,6 +197,7 @@ jobs:
           echo "F-Droid repo index verified: $(wc -c < "$IDX") bytes"
 
       - name: Deploy to GitHub Pages
+        if: ${{ env.RELEASE_STORE_FILE != '' && env.FDROID_REPO_KEYSTORE_B64 != '' }}
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

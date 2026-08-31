@@ -30,8 +30,6 @@ const ALLOWED_PERSISTED_KEYS = new Map<string, string>([
   ["`${PASSWORDS_PREFIX}${id}`", "user-entered server password, per connection"],
   ["RECENT_DIRS_KEY", "directories the user picked, for the recents list"],
   ["AUTH_SETTINGS_KEY", "biometric/app-lock preference"],
-  ["COUNT_KEY", "store-review: launch counter"],
-  ["ASKED_KEY", "store-review: already-prompted flag"],
   ["FIRST_OPEN_KEY", "analytics: first-open flag"],
   ["CONSENT_KEY", "telemetry consent decision"],
   ["CHATWOOT_SOURCE_KEY", "support contact id issued by Chatwoot"],

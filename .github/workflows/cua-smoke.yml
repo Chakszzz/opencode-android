@@ -36,13 +36,7 @@ on:
         required: false
         default: ""
   push:
-    branches: [main]
     tags: ["v*"]
-    paths:
-      - "scripts/android-cua-smoke.py"
-      - "src/**"
-      - "app/**"
-      - ".github/workflows/cua-smoke.yml"
 
 jobs:
   cua-test:
@@ -106,7 +100,7 @@ jobs:
         # reuses ReactNativeApplicationEntryPoint.java referencing the OLD
         # package (ai.opencode.mobile.BuildConfig) and compileReleaseJavaWithJavac
         # fails. Delete generated sources so prebuild + Gradle regenerate them
-        # for the current package (cc.agentlabs.opencode).
+        # for the current package (com.erprj.opencode).
         run: rm -rf android/app/build/generated android/build/generated android/app/build/intermediates
 
       - name: Install dependencies & build APK
@@ -297,9 +291,9 @@ jobs:
           # sh -c "..." which breaks when inner " chars appear. Use a
           # temp shell script to avoid quoting conflicts entirely.
           script: |
-            adb shell pm clear cc.agentlabs.opencode || true
+            adb shell pm clear com.erprj.opencode || true
             adb install android/app/build/outputs/apk/release/app-release.apk
-            adb shell am start -n cc.agentlabs.opencode/.MainActivity
+            adb shell am start -n com.erprj.opencode/.MainActivity
             sleep 5
             sh /tmp/cua-runner.sh
 

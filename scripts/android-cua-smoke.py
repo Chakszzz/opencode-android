@@ -13,7 +13,7 @@ Demonstrates the complete first-run journey:
    5. Submit a real Python coding task (helloworld.py + helloworld_test.py)
    6. Watch opencode work (tool calls, file writes), wait for idle
    7. Verify output / success response
-   8. Navigate to Settings — show model selection
+   8. Navigate to Settings — verify settings screen
    9. Screenshot settings screen
 
 Requirements:
@@ -28,6 +28,10 @@ Usage:
   # OpenAI
   export OPENAI_API_KEY=sk-...
   python scripts/android-cua-smoke.py --model gpt-4o --include-xml
+
+  # Neosantara
+  export NEOSANTARA_API_KEY=nsk_...
+  python scripts/android-cua-smoke.py --model <model-name> --include-xml
 
   # Run ONLY the onboarding showcase (default and primary flow):
   python scripts/android-cua-smoke.py --showcase
@@ -63,7 +67,7 @@ except ImportError:
 # Constants
 # ---------------------------------------------------------------------------
 
-APP_PACKAGE = "cc.agentlabs.opencode"
+APP_PACKAGE = "com.erprj.opencode"
 
 # Default opencode Tailscale dev server
 DEFAULT_OPENCODE_URL = "http://100.108.64.76:4096"
@@ -79,6 +83,23 @@ PYTHON_CODING_TASK = (
     "Create helloworld.py that prints Hello World and has a greet function that returns a greeting string. "
     "Also create helloworld_test.py with pytest tests covering both print output and greet. "
     "Make sure both files are well formed and the tests pass."
+)
+
+# UI hints — aligned with app/(tabs)/index.tsx FAB + NewSessionSheet
+FAB_NEW_SESSION = (
+    "Tap the circular '+' FAB at the bottom-right corner (short tap — do NOT long-press). "
+    "A 'New Session' bottom sheet opens."
+)
+NEW_SESSION_QUICK_START = (
+    f"{FAB_NEW_SESSION} "
+    "Tap 'Start' on the 'Current Project' card (top option) to create a session. "
+    "Wait up to 5 seconds for the chat view to open."
+)
+NEW_SESSION_CUSTOM_DIR = (
+    f"{FAB_NEW_SESSION} "
+    "Scroll to 'Enter Path Manually', tap the text input, type the path, "
+    "then tap the arrow/submit button on the right of the input. "
+    "Wait up to 5 seconds for the chat view to open."
 )
 
 # ---------------------------------------------------------------------------
@@ -528,6 +549,9 @@ Rules:
   THEN tap the send button. Or: tap the send button from memory if it was visible before the keyboard appeared.
 - If the text input is already focused (cursor visible), type directly without tapping it first.
 - Be efficient: skip unnecessary waits, tap directly on visible targets.
+- New sessions: short-tap the '+' FAB at bottom-right → 'New Session' sheet.
+  Long-press FAB instantly creates in the current directory (no folder picker).
+- Model picker is in the session chat header (top), NOT in Settings.
 - When the goal is fully achieved respond with {"type": "done", "summary": "..."}.
 - If genuinely stuck after 5+ attempts on the same element respond with {"type": "fail", ...}.
 """
@@ -540,21 +564,38 @@ def call_llm(client, model: str, system: str, history: list) -> str:
             response = client.chat.completions.create(
                 model=model,
                 messages=[{"role": "system", "content": system}] + history,
-                max_completion_tokens=300,
+                max_completion_tokens=1000,
                 temperature=0,
             )
-            return response.choices[0].message.content.strip()
+            msg = response.choices[0].message
+            content = msg.content
+            if content is None or not content.strip():
+                # gpt-5.x reasoning models can return None/empty when reasoning tokens exhaust limit or refusal
+                refusal = getattr(msg, "refusal", None)
+                finish = getattr(response.choices[0], "finish_reason", None)
+                print(f"  [LLM empty content (finish={finish}, refusal={refusal!r}), retrying...]")
+                print(f"  raw response: {str(response)[:800]}")
+                if attempt < 2:
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                # last attempt: return empty string instead of crashing .strip() on None
+                return content.strip() if content else ""
+            return content.strip()
         except Exception as e:
+            # don't swallow AttributeError from .strip() on None — already handled above
+            if isinstance(e, AttributeError):
+                raise
             if "429" in str(e) and attempt < 2:
                 wait = 15 * (attempt + 1)
                 print(f"  [rate limited, retrying in {wait}s...]")
                 time.sleep(wait)
                 continue
             raise
+    raise RuntimeError("call_llm: exhausted retries without response")
 
 
 def make_client(model: str):
-    """Create OpenAI client. Supports AZURE_OPENAI_*, AZURE_DEV_AI_*, OPENAI_API_KEY, GEMINI_API_KEY, XAI_API_KEY."""
+    """Create OpenAI client. Supports AZURE_OPENAI_*, AZURE_DEV_AI_*, OPENAI_API_KEY, GEMINI_API_KEY, XAI_API_KEY, NEOSANTARA_API_KEY."""
     if os.environ.get("AZURE_OPENAI_API_KEY"):
         azure_model = os.environ.get("AZURE_OPENAI_MODEL", "gpt-5.4")
         return AzureOpenAI(
@@ -579,7 +620,12 @@ def make_client(model: str):
             api_key=os.environ["GEMINI_API_KEY"],
             base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
         ), "gemini-2.0-flash"
-    sys.exit("Set AZURE_OPENAI_API_KEY, AZURE_DEV_AI_API_KEY, OPENAI_API_KEY, XAI_API_KEY, or GEMINI_API_KEY")
+    if os.environ.get("NEOSANTARA_API_KEY"):
+        return OpenAI(
+            api_key=os.environ["NEOSANTARA_API_KEY"],
+            base_url="https://api.neosantara.xyz/v1",
+        ), model
+    sys.exit("Set AZURE_OPENAI_API_KEY, AZURE_DEV_AI_API_KEY, OPENAI_API_KEY, XAI_API_KEY, GEMINI_API_KEY, or NEOSANTARA_API_KEY")
 
 
 @lru_cache(maxsize=1)
@@ -684,7 +730,7 @@ PHASE_BANNERS = {
     "typescript":       "STEP 5-6: Submitting TypeScript task — watching opencode work",
     "verify":           "STEP 7:   Verifying task output / success response",
     "sessions_reload":  "STEP 4b: Navigate back to sessions tab — verify sessions load (regression guard)",
-    "settings":         "STEP 8-9: Navigating to Settings — showing model selection",
+    "settings":         "STEP 8-9: Navigating to Settings — verifying settings screen",
 }
 
 
@@ -787,7 +833,8 @@ def run_onboarding_showcase(
         "connect",
         goal=(
             f"You are on the OpenCode mobile app. "
-            "The screen shows either a connection screen (first launch) or an empty connections list. "
+            "The screen may show the Sessions tab (with 'Add Connection'), the Connections tab, "
+            "or the add-connection form (first launch). "
             "Your goal: add a new connection to the opencode server and verify it is saved. "
             "Step 1: Look for an 'Add Connection', '+', or 'New Connection' button and tap it. "
             f"Step 2: In the 'IP Address' field type '{host_only}'. Do NOT include http:// or the port — just the IP. "
@@ -846,8 +893,7 @@ def run_onboarding_showcase(
         "new_session",
         goal=(
             "You are on the sessions list screen. "
-            "Tap the '+' button (usually top-right) to create a new AI coding session. "
-            "Wait up to 5 seconds for the new session / chat screen to open. "
+            f"{NEW_SESSION_QUICK_START} "
             "Report done once you see a text input field at the bottom of the screen "
             "(the session chat/input view is open)."
         ),
@@ -898,7 +944,7 @@ def run_onboarding_showcase(
         "typescript",
         goal=(
             "You are on the sessions list screen. "
-            "Tap the '+' button (top-right) to create a new session, wait for the chat view. "
+            f"{NEW_SESSION_QUICK_START} "
             f"Tap the text input field and type: {TYPESCRIPT_TASK!r} "
             "Do NOT press back (it navigates away). "
             "Tap the send/arrow button (bottom-right) to submit. "
@@ -935,19 +981,19 @@ def run_onboarding_showcase(
     _sleep(1.5)
 
     # -----------------------------------------------------------------------
-    # Phase 8-9: Navigate to Settings, show model selection (informational)
+    # Phase 8-9: Navigate to Settings, verify settings screen (informational)
     # -----------------------------------------------------------------------
     _run(
         "settings",
         goal=(
             "Navigate to the Settings screen of the OpenCode mobile app. "
-            "Look for a gear icon, 'Settings' tab in the bottom navigation bar, "
-            "or a hamburger menu that contains Settings. Tap it. "
-            "Once on the Settings screen, look for a 'Model' or 'AI Model' option and tap it "
-            "to show the model selection list. "
-            "Take a screenshot showing the model list or model setting. "
-            "You do NOT need to change the model — just show it is accessible. "
-            "Report done when the settings/model screen is visible in a screenshot."
+            "Tap the 'Settings' tab in the bottom navigation bar (gear icon). "
+            "Once on Settings, confirm you see app settings such as 'Biometric', "
+            "'Language', 'Notifications', or 'Crash reporting' rows. "
+            "The AI model picker is NOT in Settings — it lives in the session chat header. "
+            "Take a screenshot showing the Settings screen. "
+            "You do NOT need to change any setting — just confirm Settings loaded. "
+            "Report done when the Settings screen is visible with at least one settings row."
         ),
         max_steps=15,
     )
@@ -968,7 +1014,7 @@ SMOKE_SCENARIOS = [
     {
         "name": "coding_task",
         "goal": (
-            "You see the OpenCode mobile app. Tap the '+' button (top-right) to create a new session. "
+            f"You see the OpenCode mobile app. {NEW_SESSION_QUICK_START} "
             "Wait 3 seconds for the new session/chat screen to fully load. "
             "Tap the text input at the bottom. "
              f"Type this exact task: {PYTHON_CODING_TASK!r} "
@@ -989,7 +1035,7 @@ SMOKE_SCENARIOS = [
     {
         "name": "verify_session_list",
         "goal": (
-            "You see the OpenCode mobile app. Tap the '+' button (top-right) to create a new session. "
+            f"You see the OpenCode mobile app. {NEW_SESSION_QUICK_START} "
             "Wait 2 seconds for the session to be created. "
             "Navigate back to the sessions list by tapping the 'Sessions' tab or pressing back. "
             "Wait 3 seconds for the session list to load. "
@@ -1184,8 +1230,8 @@ def _connect_and_verify_sessions_goal(url: str) -> str:
         "Wait 3 seconds. "
         "Now navigate to the Sessions tab (bottom navigation bar). "
         "Wait 5 seconds for sessions to load. "
-        "If the sessions list is empty or shows 'No sessions yet', tap the '+' button "
-        "(top-right) to create a new session, wait 3 seconds, then navigate back to the "
+        f"If the sessions list is empty or shows 'No sessions yet', {NEW_SESSION_QUICK_START} "
+        "Then navigate back to the "
         "Sessions tab and wait 3 seconds for the list to refresh. "
         "Report SUCCESS if you see at least one session listed (a session title is visible). "
         "Report FAILURE if the sessions list is still empty, shows 'No sessions yet', or shows an error."
@@ -1339,19 +1385,15 @@ def run_scenario_hello_world_e2e(
 
     # ------------------------------------------------------------------
     # Phase 2: Create session in specific project directory
-    # The '+' FAB long-press opens a modal with a custom directory input.
+    # Short-tap FAB → NewSessionSheet → manual path input (long-press skips the picker).
     # ------------------------------------------------------------------
     ok = _phase(
         "open_project",
         goal=(
             "You are on the Sessions list screen of OpenCode Mobile. "
             "You need to create a NEW session in a specific project directory. "
-            "To do this: LONG-PRESS the '+' button (FAB, bottom-right corner) — "
-            "hold it for 1 second until a modal sheet appears. "
-            "The modal will show 'Current Directory' and a text input labelled "
-            "'Or use a different folder'. "
-            f"Tap that text input and type the path: {project_dir} "
-            "Then tap the 'Create in this directory' button (or 'Create' / 'Open'). "
+            f"{NEW_SESSION_CUSTOM_DIR} "
+            f"The path to enter is: {project_dir} "
             "Report done when the session chat view opens "
             "(you see a text input at the bottom of the screen)."
         ),
@@ -1527,11 +1569,14 @@ Rules for deterministic_checks:
 - file_created: checks REST API session messages for a filename.
 
 Available context:
-- App package: cc.agentlabs.opencode
+- App package: com.erprj.opencode
 - Default server URL used in tests: {opencode_url}
 - Sessions tab is in the bottom navigation bar.
-- Long-press FAB (+) opens a modal to create a session in a custom directory.
+- Short-tap the '+' FAB (bottom-right) opens the 'New Session' bottom sheet.
+  Long-press FAB instantly creates in the current directory (no folder picker).
+  To pick a custom directory: short-tap FAB → 'Enter Path Manually' → type path → submit.
 - Model picker appears at the top of the session chat view — tap it to change models.
+  It is NOT in Settings.
 - Send button is at the bottom-right of the text input row.
 """
 

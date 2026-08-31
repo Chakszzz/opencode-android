@@ -1,0 +1,7 @@
+v0.4.16 — UI Polish and In-App Setup Guide
+
+• Added interactive bottom sheet drawer for server setup instructions instead of external links.
+• Refined Add Connection screen and removed waitlist email form.
+• Crisp official vector SVG logo on empty session states.
+• Switched setup guide badges and status markers to vector Ionicons.
+• Enhanced Gradle build caching for faster CI compilation.

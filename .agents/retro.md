@@ -4,6 +4,18 @@ Lessons from past tasks. Read before starting related work to avoid repeating mi
 
 ---
 
+## 2026-08-30: Accidental `git checkout` wiped working tree changes
+
+**Problem**: An agent attempting to fix a syntax error ran `git checkout src/lib/sdk.ts`. This immediately reverted all uncommitted methods (`auth`, `mcp`, `provider.auth`, `config.update`, `summarize`, `skills`), triggering 18 TypeScript errors across all dependent components. The agent then incorrectly classified those errors as "pre-existing".
+
+**Mistake**: Using Git commands (`git checkout`, `git restore`, `git reset`) to undo local edits. The workspace constantly holds uncommitted feature work that must never be discarded.
+
+**Correct pattern**:
+- **NEVER run `git checkout`, `git restore`, `git reset`, or `git clean`**.
+- Always fix syntax/type errors using standard file editing tools (`replace_file_content` / `write_to_file`).
+
+---
+
 ## 2026-06-22: CUA send_message fix (v0.4.5 → v0.4.7)
 
 **Problem**: CUA smoke test `send_message` scenario failed — app sent `claude-sonnet-4-6` to Azure, but only `gpt-5.4` was deployed on the CI resource.

@@ -11,15 +11,18 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Share,
+  Vibration,
 } from "react-native"
 import { useLocalSearchParams, Stack, useRouter, useFocusEffect } from "expo-router"
-import { Ionicons } from "@expo/vector-icons"
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
 import * as ImagePicker from "expo-image-picker"
 import * as ImageManipulator from "expo-image-manipulator"
 import * as Clipboard from "expo-clipboard"
 import type BottomSheet from "@gorhom/bottom-sheet"
+import type { Message, Part, Session } from "../../src/lib/sdk"
 import {
   MessageBubble,
   PermissionPrompt,
@@ -27,11 +30,31 @@ import {
   StatusIndicator,
   SlashPopover,
   ModelPicker,
+  ModelLogo,
   VariantPicker,
+  ConnectProviderSheet,
+  McpSheet,
+  StatusSheet,
+  DirectoryBrowserSheet,
+  OpenCodeSettingsSheet,
+  SkillsSheet,
+  ReviewDiffSheet,
+  SubagentsSheet,
+  AgentPickerSheet,
+  FileViewerSheet,
+  FileMentionPopover,
+  TodoSheet,
+  TodoDock,
+  RevertDock,
+  FollowupDock,
+  SessionsSheet,
   ImageAttachments,
   SessionInfo,
+  groupMessagesIntoTurns,
+  type TurnGroupItem,
   type SlashCommand,
   type Attachment,
+  type Skill,
 } from "../../src/components/chat"
 import { useSessions } from "../../src/stores/sessions"
 import { useEvents, refreshPending } from "../../src/stores/events"
@@ -39,6 +62,8 @@ import { useConnections } from "../../src/stores/connections"
 import { useAuth } from "../../src/stores/auth"
 import { useCatalog } from "../../src/stores/catalog"
 import { useSpeech } from "../../src/lib/speech"
+import { reduceLiveFollow } from "../../src/lib/live-follow"
+import { readClipboardContent } from "../../src/lib/clipboard-paste"
 
 // --- Builtin slash commands ---
 const BUILTIN_COMMANDS: SlashCommand[] = [
@@ -50,7 +75,49 @@ const BUILTIN_COMMANDS: SlashCommand[] = [
     type: "builtin",
   },
   {
+    trigger: "clear",
+    title: "Clear Session",
+    description: "Start a new session",
+    icon: "trash-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "sessions",
+    title: "All Sessions",
+    description: "Go back to sessions list",
+    icon: "chatbubbles-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "resume",
+    title: "Resume Session",
+    description: "Go back to sessions list",
+    icon: "chatbubbles-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "continue",
+    title: "Continue Session",
+    description: "Go back to sessions list",
+    icon: "chatbubbles-outline",
+    type: "builtin",
+  },
+  {
     trigger: "model",
+    title: "Switch Model",
+    description: "Choose a different model",
+    icon: "hardware-chip-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "models",
+    title: "Switch Model",
+    description: "Choose a different model",
+    icon: "hardware-chip-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "mo",
     title: "Switch Model",
     description: "Choose a different model",
     icon: "hardware-chip-outline",
@@ -63,7 +130,247 @@ const BUILTIN_COMMANDS: SlashCommand[] = [
     icon: "person-outline",
     type: "builtin",
   },
+  {
+    trigger: "agents",
+    title: "Switch Agent",
+    description: "Cycle to next agent",
+    icon: "person-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "connect",
+    title: "Connect Provider",
+    description: "Manage AI providers & API keys",
+    icon: "key-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "settings",
+    title: "Server Settings",
+    description: "OpenCode server configuration & opencode.json",
+    icon: "settings-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "exit",
+    title: "Exit",
+    description: "Exit the session",
+    icon: "exit-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "quit",
+    title: "Quit",
+    description: "Exit the session",
+    icon: "exit-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "workspaces",
+    title: "Workspaces",
+    description: "Switch workspaces",
+    icon: "folder-open-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "mcps",
+    title: "Toggle MCPs",
+    description: "Manage MCP tools",
+    icon: "construct-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "variants",
+    title: "Model Variants",
+    description: "Switch model variants",
+    icon: "color-wand-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "org",
+    title: "Switch Org",
+    description: "Switch organization",
+    icon: "business-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "status",
+    title: "View Status",
+    description: "System status",
+    icon: "information-circle-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "debug",
+    title: "Debug Info",
+    description: "View debug logs",
+    icon: "bug-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "themes",
+    title: "Switch Theme",
+    description: "Change app theme",
+    icon: "color-palette-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "help",
+    title: "Help",
+    description: "Show help",
+    icon: "help-circle-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "switch",
+    title: "Switch Session",
+    description: "Switch between project sessions",
+    icon: "swap-horizontal-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "compact",
+    title: "Compact Session",
+    description: "Summarize session with AI compaction",
+    icon: "contract-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "skills",
+    title: "Browse Skills",
+    description: "Browse available skills",
+    icon: "library-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "editor",
+    title: "Open Editor",
+    description: "Open external editor",
+    icon: "create-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "init",
+    title: "Initialize AGENTS.md",
+    description: "Create/update AGENTS.md in project root",
+    icon: "document-text-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "review",
+    title: "Code Review",
+    description: "Run native OpenCode AI code review",
+    icon: "git-pull-request-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "diff",
+    title: "View Diffs",
+    description: "Visual Git diff viewer",
+    icon: "git-compare-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "docs",
+    title: "Search Docs",
+    description: "Search documentation",
+    icon: "book-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "memory",
+    title: "Manage Memory",
+    description: "Manage memory and rules",
+    icon: "hardware-chip-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "rules",
+    title: "Manage Rules",
+    description: "Manage custom rules",
+    icon: "shield-checkmark-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "hooks",
+    title: "Manage Hooks",
+    description: "Manage hooks",
+    icon: "git-commit-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "profile",
+    title: "View Profile",
+    description: "View user profile",
+    icon: "person-circle-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "usage",
+    title: "Usage Stats",
+    description: "View usage statistics",
+    icon: "analytics-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "todo",
+    title: "Manage Todos",
+    description: "View and manage todos",
+    icon: "checkbox-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "budget",
+    title: "Budget Settings",
+    description: "Manage budget settings",
+    icon: "wallet-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "feedback",
+    title: "Send Feedback",
+    description: "Send feedback to OpenCode",
+    icon: "chatbubble-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "history",
+    title: "View History",
+    description: "View session history",
+    icon: "time-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "share",
+    title: "Share Session",
+    description: "Export & share session markdown transcript",
+    icon: "share-social-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "mcp",
+    title: "Manage MCP",
+    description: "Manage a specific MCP",
+    icon: "construct-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "export",
+    title: "Export Session",
+    description: "Export full session transcript to markdown",
+    icon: "download-outline",
+    type: "builtin",
+  },
+  {
+    trigger: "import",
+    title: "Import Session",
+    description: "Import session data",
+    icon: "enter-outline",
+    type: "builtin",
+  },
 ]
+
+const EMPTY_ARRAY: never[] = []
 
 function getShortDir(dir?: string): string | null {
   if (!dir) return null
@@ -82,35 +389,47 @@ export default function SessionScreen() {
   const flatListRef = useRef<FlatList>(null)
   const modelSheetRef = useRef<BottomSheet>(null)
   const variantSheetRef = useRef<BottomSheet>(null)
+  const providerSheetRef = useRef<BottomSheet>(null)
+  const mcpSheetRef = useRef<BottomSheet>(null)
+  const statusSheetRef = useRef<BottomSheet>(null)
+  const workspaceSheetRef = useRef<BottomSheet>(null)
+  const opencodeSettingsSheetRef = useRef<BottomSheet>(null)
+  const skillsSheetRef = useRef<BottomSheet>(null)
+  const reviewDiffSheetRef = useRef<BottomSheet>(null)
+  const subagentsSheetRef = useRef<BottomSheet>(null)
+  const agentSheetRef = useRef<BottomSheet>(null)
+  const fileViewerSheetRef = useRef<BottomSheet>(null)
+  const todoSheetRef = useRef<BottomSheet>(null)
+  const sessionsSheetRef = useRef<BottomSheet>(null)
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
   const [input, setInput] = useState("")
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [showInfo, setShowInfo] = useState(false)
 
-  const {
-    currentSession,
-    messages,
-    parts,
-    isLoading,
-    loadingMore,
-    hasMore,
-    error: sessionsError,
-    selectSession,
-    sendMessage,
-    abortSession,
-    loadOlderMessages,
-    revertToMessage,
-    unrevertSession,
-    clearError,
-    loadSubagents,
-    subagents,
-    subagentsLoading,
-  } = useSessions()
+  const currentSession = useSessions((s) => s.currentSession)
+  const messages = useSessions((s) => s.messages)
+  const parts = useSessions((s) => s.parts)
+  const isLoading = useSessions((s) => s.isLoading)
+  const loadingMore = useSessions((s) => s.loadingMore)
+  const hasMore = useSessions((s) => s.hasMore)
+  const sessionsError = useSessions((s) => s.error)
+  const selectSession = useSessions((s) => s.selectSession)
+  const sendMessage = useSessions((s) => s.sendMessage)
+  const abortSession = useSessions((s) => s.abortSession)
+  const loadOlderMessages = useSessions((s) => s.loadOlderMessages)
+  const revertToMessage = useSessions((s) => s.revertToMessage)
+  const unrevertSession = useSessions((s) => s.unrevertSession)
+  const clearError = useSessions((s) => s.clearError)
+  const loadSubagents = useSessions((s) => s.loadSubagents)
+  const subagents = useSessions((s) => s.subagents)
+  const subagentsLoading = useSessions((s) => s.subagentsLoading)
 
   // Derive sending state for this specific session
   const isSending = useSessions((s) => !!(currentSession && s.sending[currentSession.id]))
 
   const { authenticateForMessage } = useAuth()
-  const { client, clientForDirectory } = useConnections()
+  const client = useConnections((s) => s.client)
+  const clientForDirectory = useConnections((s) => s.clientForDirectory)
 
   // Use directory-aware client for sessions that belong to a project other than the active one
   const sessionClient = useMemo(
@@ -119,24 +438,32 @@ export default function SessionScreen() {
   )
 
   // Catalog
-  const catalog = useCatalog()
-  const agents = Array.isArray(catalog.agents) ? catalog.agents : []
-  const serverCommands = Array.isArray(catalog.commands) ? catalog.commands : []
-  const providers = Array.isArray(catalog.providers) ? catalog.providers : []
-  const agent = catalog.agent || ""
-  const model = catalog.model
-  const setModel = catalog.setModel
-  const variant = catalog.variant
-  const setVariant = catalog.setVariant
-  const cycleAgent = catalog.cycleAgent
+  const rawAgents = useCatalog((s) => s.agents)
+  const rawCommands = useCatalog((s) => s.commands)
+  const rawProviders = useCatalog((s) => s.providers)
+  const agents = Array.isArray(rawAgents) ? rawAgents : EMPTY_ARRAY
+  const serverCommands = Array.isArray(rawCommands) ? rawCommands : EMPTY_ARRAY
+  const providers = Array.isArray(rawProviders) ? rawProviders : EMPTY_ARRAY
+  const agent = useCatalog((s) => s.agent) || ""
+  const setAgent = useCatalog((s) => s.setAgent)
+  const model = useCatalog((s) => s.model)
+  const setModel = useCatalog((s) => s.setModel)
+  const variant = useCatalog((s) => s.variant)
+  const setVariant = useCatalog((s) => s.setVariant)
+  const cycleAgent = useCatalog((s) => s.cycleAgent)
 
   // Permission & question state
   const sessionID = currentSession?.id
-  const permissions = useEvents((s) => (sessionID ? s.permissions[sessionID] : undefined)) || []
-  const questions = useEvents((s) => (sessionID ? s.questions[sessionID] : undefined)) || []
+  const permissions = useEvents((s) => (sessionID ? s.permissions[sessionID] : undefined)) ?? EMPTY_ARRAY
+  const questions = useEvents((s) => (sessionID ? s.questions[sessionID] : undefined)) ?? EMPTY_ARRAY
+  const sessionStatus = useEvents((s) => (sessionID ? s.sessionStatus[sessionID] : undefined))
+  const statusText = useEvents((s) => (sessionID ? s.statusText[sessionID] : undefined))
+  const isWorking = isSending || sessionStatus?.type === "busy" || !!(statusText && statusText !== "Idle")
 
   const shortDir = getShortDir(currentSession?.directory)
   const [showScrollButton, setShowScrollButton] = useState(false)
+  const isDraggingRef = useRef(false)
+  const [liveFollow, setLiveFollow] = useState({ isLiveFollow: true, isAtBottom: true })
 
   // SSE reconnect banner
   const reconnectAttempts = useEvents((s) => s.reconnectAttempts)
@@ -169,15 +496,49 @@ export default function SessionScreen() {
   const slashActive = input.startsWith("/") && !input.includes(" ")
   const slashQuery = slashActive ? input.slice(1) : ""
 
+  // @ file mention state
+  const mentionMatch = input.match(/(?:^|\s)@([^\s]*)$/)
+  const mentionActive = !slashActive && Boolean(mentionMatch)
+  const mentionQuery = mentionMatch ? mentionMatch[1] : ""
+
+  const handleMentionSelect = useCallback((filePath: string) => {
+    setInput((prev) =>
+      prev.replace(/(?:^|\s)@([^\s]*)$/, (match) => {
+        const prefix = match.startsWith(" ") ? " @" : "@"
+        return `${prefix}${filePath} `
+      }),
+    )
+  }, [])
+
   const allCommands = useMemo<SlashCommand[]>(() => {
-    const custom: SlashCommand[] = serverCommands.map((cmd) => ({
-      trigger: cmd.name,
-      title: cmd.name,
-      description: cmd.description,
-      icon: "code-slash-outline",
-      type: "custom",
-    }))
-    return [...custom, ...BUILTIN_COMMANDS]
+    const seen = new Set<string>()
+    const result: SlashCommand[] = []
+
+    // Builtin commands first
+    for (const cmd of BUILTIN_COMMANDS) {
+      const key = cmd.trigger.toLowerCase()
+      if (!seen.has(key)) {
+        seen.add(key)
+        result.push(cmd)
+      }
+    }
+
+    // Custom / server commands (deduplicate against builtins)
+    for (const cmd of serverCommands) {
+      const key = cmd.name.toLowerCase()
+      if (!seen.has(key)) {
+        seen.add(key)
+        result.push({
+          trigger: cmd.name,
+          title: cmd.name,
+          description: cmd.description,
+          icon: "code-slash-outline",
+          type: "custom",
+        })
+      }
+    }
+
+    return result
   }, [serverCommands])
 
   // While a revert is pending, the reverted message and everything after it
@@ -189,18 +550,32 @@ export default function SessionScreen() {
   // message sent concurrently with a revert isn't hidden.
   const revertMessageID = currentSession?.revert?.messageID
 
+  // Cache turn item references so older turns maintain stable object identity
+  // during streaming, preventing VirtualizedList from re-rendering the entire list.
+  const itemCacheRef = useRef<Map<string, TurnGroupItem>>(new Map())
+
   // Inverted FlatList: data is reversed (newest first) so newest renders at bottom
-  const messageData = useMemo(
-    () =>
-      (messages || [])
-        .filter((msg) => !revertMessageID || msg.id.startsWith("temp-") || msg.id < revertMessageID)
-        .map((msg) => ({
-          message: msg,
-          parts: (parts && parts[msg.id]) || [],
-        }))
-        .reverse(),
-    [messages, parts, revertMessageID],
-  )
+  const messageData = useMemo(() => {
+    const rawTurns = groupMessagesIntoTurns(messages || [], parts, revertMessageID)
+    const cache = itemCacheRef.current
+
+    const result = rawTurns.map((turn) => {
+      const cached = cache.get(turn.id)
+      if (
+        cached &&
+        cached.message === turn.message &&
+        cached.error === turn.error &&
+        cached.parts.length === turn.parts.length &&
+        cached.parts.every((p, i) => p === turn.parts[i])
+      ) {
+        return cached
+      }
+      cache.set(turn.id, turn)
+      return turn
+    })
+
+    return result.reverse()
+  }, [messages, parts, revertMessageID])
 
   // Tracks the latest composer text without pulling `input` into
   // handleMessageLongPress's deps — kept as a plain ref assignment (not
@@ -220,50 +595,183 @@ export default function SessionScreen() {
       }
       return
     }
+
+    // Prefill the composer with the reverted message's text
     setInput(result.text)
-    // Restore attachments in the same shape the composer's own picker
-    // functions (pickFromLibrary/pickFromCamera/pasteFromClipboard) use.
+    inputRef.current = result.text
+
+    // Restore any image attachments that were on the reverted message
     setAttachments(
       result.files
-        .filter((f): f is typeof f & { url: string; mime: string } => !!f.url && !!f.mime)
+        .filter((f): f is typeof f & { url: string; mime: string } => Boolean(f.url && f.mime))
         .map((f) => ({ uri: f.url, mime: f.mime, filename: f.filename })),
     )
   }, [t])
 
-  // Stable across renders (reads fresh state via getState() rather than
-  // closing over props) so MessageBubble's custom memo comparator can bail
-  // safely without risking a stale handler.
-  const handleMessageLongPress = useCallback((messageID: string) => {
-    Alert.alert(t("session.alerts.messageActionsTitle"), undefined, [
+  const handleShareSession = useCallback(() => {
+    const session = useSessions.getState().currentSession
+    const sessionMsgs = useSessions.getState().messages
+    const sessionParts = useSessions.getState().parts
+    if (!session || !sessionMsgs.length) {
+      Alert.alert("Empty Session", "There are no messages in this session to export or share.")
+      return
+    }
+    const transcript = [
+      `# ${session.title || "OpenCode Session"}`,
+      `*Directory: ${session.directory || "root"}*`,
+      `*Exported on ${new Date().toLocaleString()}*`,
+      "",
+      ...sessionMsgs.map((m) => {
+        const roleHeader = m.role === "user" ? "### 👤 User" : `### 🤖 Assistant (${m.modelID || "AI"})`
+        const msgParts = sessionParts[m.id] || []
+        const text = msgParts
+          .filter((p) => p.type === "text")
+          .map((p) => p.text)
+          .join("\n")
+        return `${roleHeader}\n\n${text}\n`
+      }),
+    ].join("\n")
+
+    Alert.alert(session.title || "OpenCode Session", "Export or share session transcript", [
       { text: t("common.cancel"), style: "cancel" },
       {
-        text: t("session.actions.editMessage"),
+        text: "Share via Apps",
         onPress: () => {
-          const doRevert = async () => {
-            const result = await useSessions.getState().revertToMessage(messageID)
-            applyRevertResult(result)
-          }
-          // Editing overwrites the composer — don't silently clobber an
-          // in-progress unsent draft.
-          if (inputRef.current.trim()) {
-            Alert.alert(
-              t("session.alerts.replaceDraftTitle"),
-              t("session.alerts.replaceDraftMessage"),
-              [
-                { text: t("common.cancel"), style: "cancel" },
-                { text: t("session.actions.replace"), style: "destructive", onPress: doRevert },
-              ],
-              { cancelable: false },
-            )
-            return
-          }
-          doRevert()
+          Share.share({
+            title: session.title || "OpenCode Session",
+            message: transcript,
+          }).catch(() => {})
+        },
+      },
+      {
+        text: "Copy Full Markdown",
+        onPress: async () => {
+          await Clipboard.setStringAsync(transcript)
+          Alert.alert("Copied", "Full session markdown transcript copied to clipboard.")
         },
       },
     ])
-  }, [applyRevertResult, t])
+  }, [t])
+
+  const handleForkFromMessage = useCallback(
+    async (targetMessageID?: string) => {
+      const session = useSessions.getState().currentSession
+      if (!session) return
+      const title = `${t("session.actions.forkPrefix")}: ${session.title || t("sessionsList.untitledSession")}`
+      const create = useSessions.getState().createSession
+      const newSession = await create(title)
+      if (newSession) {
+        router.push({
+          pathname: `/session/[id]`,
+          params: { id: newSession.id, ...(session.directory ? { directory: session.directory } : {}) },
+        })
+      } else {
+        Alert.alert(t("session.alerts.forkFailedTitle"), t("session.alerts.forkFailedMessage"))
+      }
+    },
+    [t, router],
+  )
+
+  // Stable across renders (reads fresh state via getState() rather than
+  // closing over props) so MessageBubble's custom memo comparator can bail
+  // safely without risking a stale handler.
+  const handleMessageLongPress = useCallback(
+    (messageID: string, role: "user" | "assistant", messageText: string) => {
+      if (role === "user") {
+        Alert.alert(t("session.alerts.messageActionsTitle"), undefined, [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: "Copy Message Text",
+            onPress: async () => {
+              await Clipboard.setStringAsync(messageText)
+              Alert.alert("Copied", "User message copied to clipboard.")
+            },
+          },
+          {
+            text: t("session.actions.fork"),
+            onPress: () => handleForkFromMessage(messageID),
+          },
+          {
+            text: t("session.actions.editMessage"),
+            onPress: () => {
+              const doRevert = async () => {
+                const result = await useSessions.getState().revertToMessage(messageID)
+                applyRevertResult(result)
+              }
+              // Editing overwrites the composer — don't silently clobber an
+              // in-progress unsent draft.
+              if (inputRef.current.trim()) {
+                Alert.alert(
+                  t("session.alerts.replaceDraftTitle"),
+                  t("session.alerts.replaceDraftMessage"),
+                  [
+                    { text: t("common.cancel"), style: "cancel" },
+                    { text: t("session.actions.replace"), style: "destructive", onPress: doRevert },
+                  ],
+                  { cancelable: false },
+                )
+                return
+              }
+              doRevert()
+            },
+          },
+        ])
+      } else {
+        // Assistant message actions
+        Alert.alert("Assistant Response", undefined, [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: "Copy Response (Markdown)",
+            onPress: async () => {
+              await Clipboard.setStringAsync(messageText)
+              Alert.alert("Copied", "Assistant response copied to clipboard.")
+            },
+          },
+          {
+            text: "Copy Code Blocks Only",
+            onPress: async () => {
+              const codeBlocks = (messageText.match(/```[\s\S]*?```/g) || [])
+                .map((b) => b.replace(/^```[a-zA-Z]*\n?/, "").replace(/\n?```$/, ""))
+                .join("\n\n---\n\n")
+              if (codeBlocks.trim()) {
+                await Clipboard.setStringAsync(codeBlocks)
+                Alert.alert("Copied", "Code blocks copied to clipboard.")
+              } else {
+                Alert.alert("No Code Blocks", "No fenced code blocks found in this message.")
+              }
+            },
+          },
+          {
+            text: t("session.actions.fork"),
+            onPress: () => handleForkFromMessage(messageID),
+          },
+          {
+            text: "Share Response",
+            onPress: () => {
+              Share.share({ message: messageText })
+            },
+          },
+        ])
+      }
+    },
+    [applyRevertResult, handleForkFromMessage, t],
+  )
+
+  const renderMessage = useCallback(
+    ({ item }: { item: TurnGroupItem }) => (
+      <MessageBubble
+        message={item.message}
+        parts={item.parts}
+        error={item.error}
+        isDark={isDark}
+        onLongPress={handleMessageLongPress}
+      />
+    ),
+    [isDark, handleMessageLongPress],
+  )
 
   const scrollToBottom = useCallback((animated = true) => {
+    setLiveFollow((prev) => reduceLiveFollow(prev, { type: "snap-bottom" }))
     flatListRef.current?.scrollToOffset({ offset: 0, animated })
   }, [])
 
@@ -304,28 +812,312 @@ export default function SessionScreen() {
     }
   }, [currentSession?.id, messages?.length])
 
+  // Variants for current model (for reasoning effort picker)
+  const currentModelVariants = useMemo(() => {
+    if (!model) return undefined
+    const provider = providers.find((p) => p.id === model.providerID)
+    const found = provider?.models.find((m) => m.id === model.modelID)
+    return found?.variants
+  }, [model, providers])
+
   // Slash command handler
   const handleSlashSelect = useCallback(
     (cmd: SlashCommand) => {
       if (cmd.type === "builtin") {
         switch (cmd.trigger) {
-          case "new":
-            router.back()
+          case "new": {
+            setInput("")
+            const dir = currentSession?.directory || (directory as string | undefined)
+            useSessions.getState().createSession(undefined, dir).then((newSession) => {
+              if (newSession) {
+                router.replace({
+                  pathname: "/session/[id]",
+                  params: { id: newSession.id, ...(dir ? { directory: dir } : {}) },
+                })
+              }
+            })
+            return
+          }
+          case "clear": {
+            setInput("")
+            Alert.alert(
+              "Clear Session",
+              "Start a fresh session in this project directory?",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Start New",
+                  onPress: async () => {
+                    const dir = currentSession?.directory || (directory as string | undefined)
+                    const newSession = await useSessions.getState().createSession(undefined, dir)
+                    if (newSession) {
+                      router.replace({
+                        pathname: "/session/[id]",
+                        params: { id: newSession.id, ...(dir ? { directory: dir } : {}) },
+                      })
+                    }
+                  },
+                },
+              ],
+            )
+            return
+          }
+          case "sessions":
+          case "resume":
+          case "continue":
+          case "switch":
+            setInput("")
+            sessionsSheetRef.current?.expand()
+            return
+          case "exit":
+          case "quit":
+            setInput("")
+            router.replace("/(tabs)")
             return
           case "model":
+          case "models":
+          case "mo":
             setInput("")
             modelSheetRef.current?.expand()
             return
           case "agent":
+          case "agents":
             setInput("")
-            cycleAgent()
+            agentSheetRef.current?.expand()
+            return
+          case "connect":
+            setInput("")
+            providerSheetRef.current?.expand()
+            return
+          case "settings":
+            setInput("")
+            opencodeSettingsSheetRef.current?.expand()
+            return
+          case "themes":
+            router.replace("/(tabs)/settings")
+            return
+          case "variants":
+            setInput("")
+            if (currentModelVariants && Object.keys(currentModelVariants).length > 0) {
+              variantSheetRef.current?.expand()
+            } else {
+              Alert.alert(
+                "No Variants Available",
+                "The current model does not support reasoning effort variants (e.g. low/medium/high).",
+              )
+            }
+            return
+          case "workspaces":
+          case "file":
+          case "files":
+            setInput("")
+            workspaceSheetRef.current?.expand()
+            return
+          case "mcps":
+          case "mcp":
+            setInput("")
+            mcpSheetRef.current?.expand()
+            return
+          case "status":
+            setInput("")
+            statusSheetRef.current?.expand()
+            return
+          case "share":
+          case "export":
+            setInput("")
+            handleShareSession()
+            return
+          case "org":
+          case "debug":
+          case "help":
+            setInput("")
+            Alert.alert(
+              "Not Implemented",
+              `The /${cmd.trigger} command is currently only available via the OpenCode CLI/TUI on your server. Mobile UI is coming soon!`
+            )
+            return
+          case "compact":
+            setInput("")
+            if (!sessionClient || !currentSession) {
+              Alert.alert("Error", "No active session or connection.")
+              return
+            }
+            sessionClient.session
+              .summarize(currentSession.id, {
+                providerID: model?.providerID,
+                modelID: model?.modelID,
+                auto: false,
+              })
+              .then(() => {
+                console.log("[slash] compact: summarize triggered")
+              })
+              .catch((err: unknown) => {
+                const msg = err instanceof Error ? err.message : String(err)
+                Alert.alert("Compact Failed", msg)
+              })
+            return
+          case "skills":
+          case "skill":
+            setInput("")
+            skillsSheetRef.current?.expand()
+            return
+          case "init":
+            setInput("")
+            if (!sessionClient || !currentSession) {
+              Alert.alert("Error", "No active session or connection.")
+              return
+            }
+            if (!model?.providerID || !model?.modelID) {
+              Alert.alert("Model Required", "Please select a model before initializing AGENTS.md.")
+              return
+            }
+            sessionClient
+              .init(currentSession.id, {
+                providerID: model.providerID,
+                modelID: model.modelID,
+                messageID: messages?.[messages.length - 1]?.id || "",
+              })
+              .then(() => {
+                Alert.alert("Initialized", "AGENTS.md initialization requested on server!")
+              })
+              .catch((err: unknown) => {
+                const msg = err instanceof Error ? err.message : String(err)
+                Alert.alert("Init Failed", msg)
+              })
+            return
+          case "review":
+            setInput("")
+            if (!sessionClient || !currentSession) {
+              Alert.alert("Error", "No active session or connection.")
+              return
+            }
+            sessionClient.session
+              .command(currentSession.id, {
+                command: "review",
+                arguments: "",
+                agent,
+                model: model ? `${model.providerID}/${model.modelID}` : undefined,
+              })
+              .then(() => {
+                console.log("[slash] review: native AI code review triggered")
+              })
+              .catch((err: unknown) => {
+                const msg = err instanceof Error ? err.message : String(err)
+                Alert.alert("Review Failed", msg)
+              })
+            return
+          case "diff":
+            setInput("")
+            reviewDiffSheetRef.current?.expand()
+            return
+          case "subagents":
+          case "subagent":
+            setInput("")
+            subagentsSheetRef.current?.expand()
+            return
+          case "todo":
+          case "todos":
+          case "tasks":
+            setInput("")
+            todoSheetRef.current?.expand()
+            return
+          case "editor":
+          case "docs":
+          case "memory":
+          case "rules":
+          case "hooks":
+          case "profile":
+          case "usage":
+          case "budget":
+          case "feedback":
+          case "history":
+          case "import":
+            setInput("")
+            Alert.alert(
+              "Not Implemented",
+              `The /${cmd.trigger} command is currently only available via the OpenCode CLI/TUI on your server. Mobile UI is coming soon!`
+            )
             return
         }
       }
       setInput(`/${cmd.trigger} `)
     },
-    [router, cycleAgent],
+    [router, cycleAgent, currentModelVariants, sessionClient, currentSession, model, messages],
   )
+
+  const handleWorkspaceSelect = useCallback(
+    (dir: string) => {
+      workspaceSheetRef.current?.close()
+      Alert.alert(
+        "Open Workspace",
+        `Start a new session in ${dir}?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Open",
+            onPress: () => {
+              router.push({
+                pathname: "/session/[id]",
+                params: { id: "new", directory: dir },
+              })
+            },
+          },
+        ],
+      )
+    },
+    [router],
+  )
+
+  const handleSelectSkill = useCallback((skill: Skill) => {
+    setInput((prev) => (prev ? `${prev} use skill ${skill.name}` : `Use the ${skill.name} skill to `))
+  }, [])
+
+  const handleSelectSubagent = useCallback(
+    (sa: Session) => {
+      router.push({
+        pathname: "/session/[id]",
+        params: { id: sa.id, ...(sa.directory ? { directory: sa.directory } : {}) },
+      })
+    },
+    [router],
+  )
+
+  const handleSelectFile = useCallback((filePath: string) => {
+    setSelectedFilePath(filePath)
+    fileViewerSheetRef.current?.expand()
+  }, [])
+
+  const handleQuoteDiffLine = useCallback((file: string, lineText: string) => {
+    setInput((prev) => {
+      const quote = `> [${file}]: ${lineText}\n\n`
+      return prev ? `${prev}\n${quote}` : quote
+    })
+  }, [])
+
+  const handleSelectOtherSession = useCallback(
+    (targetSession: Session) => {
+      if (targetSession.id === currentSession?.id) return
+      router.replace({
+        pathname: "/session/[id]",
+        params: {
+          id: targetSession.id,
+          ...(targetSession.directory ? { directory: targetSession.directory } : {}),
+        },
+      })
+    },
+    [currentSession?.id, router],
+  )
+
+  const handleCreateSessionFromSheet = useCallback(async () => {
+    const dir = currentSession?.directory || (directory as string | undefined)
+    const newSession = await useSessions.getState().createSession(undefined, dir)
+    if (newSession) {
+      router.replace({
+        pathname: "/session/[id]",
+        params: { id: newSession.id, ...(dir ? { directory: dir } : {}) },
+      })
+    }
+  }, [currentSession?.directory, directory, router])
 
   // --- Image picking ---
 
@@ -391,28 +1183,30 @@ export default function SessionScreen() {
   }, [t])
 
   const pasteFromClipboard = useCallback(async () => {
-    // Try image first
-    const hasImage = await Clipboard.hasImageAsync()
-    if (hasImage) {
-      const img = await Clipboard.getImageAsync({ format: "png" })
-      if (img?.data) {
-        const uri = img.data.startsWith("data:") ? img.data : `data:image/png;base64,${img.data}`
-        const item = await toJpeg(uri, img.size.width, img.size.height)
+    const result = await readClipboardContent(attachments.length, 10)
+    if (result.image) {
+      try {
+        const item = await toJpeg(result.image.uri, result.image.width, result.image.height)
         setAttachments((prev) => [...prev, item])
+        try {
+          Vibration.vibrate(10)
+        } catch {}
         return
+      } catch (err) {
+        console.error("Failed to process clipboard image:", err)
       }
     }
-    // Fall back to text
-    const hasText = await Clipboard.hasStringAsync()
-    if (hasText) {
-      const text = await Clipboard.getStringAsync()
-      if (text) {
-        setInput((prev) => prev + text)
-        return
-      }
+    if (result.text) {
+      setInput((prev) => (prev ? `${prev}\n${result.text}` : result.text!))
+      try {
+        Vibration.vibrate(10)
+      } catch {}
+      return
     }
-    Alert.alert(t("session.alerts.emptyClipboardTitle"), t("session.alerts.emptyClipboardMessage"))
-  }, [t])
+    if (result.error) {
+      Alert.alert(t("session.alerts.emptyClipboardTitle"), result.error)
+    }
+  }, [attachments.length, t])
 
   const removeAttachment = useCallback((index: number) => {
     setAttachments((prev) => prev.filter((_, i) => i !== index))
@@ -432,12 +1226,16 @@ export default function SessionScreen() {
     setInput("")
     setAttachments([])
 
-    // Server slash commands (no attachments for commands)
+    // Slash command intercepts (no attachments for commands)
     if (text.startsWith("/") && files.length === 0) {
+      if (text === "/diff") {
+        reviewDiffSheetRef.current?.expand()
+        return
+      }
       const [cmdName, ...args] = text.split(" ")
       const name = cmdName.slice(1)
       const match = serverCommands.find((c) => c.name === name)
-      if (match && sessionClient && currentSession) {
+      if ((match || name === "review" || name === "init") && sessionClient && currentSession) {
         sessionClient.session
           .command(currentSession.id, {
             command: name,
@@ -463,11 +1261,66 @@ export default function SessionScreen() {
     }
   }
 
+  const handleSelectFollowup = useCallback(
+    async (followupText: string, immediateSend?: boolean) => {
+      if (immediateSend) {
+        const authenticated = await authenticateForMessage()
+        if (!authenticated) {
+          Alert.alert(t("session.alerts.authRequiredTitle"), t("session.alerts.authRequiredMessage"))
+          return
+        }
+        try {
+          await sendMessage(followupText.trim(), model || undefined, agent || undefined, [], variant || undefined)
+        } catch (err) {
+          console.error("Followup send failed:", err)
+          Alert.alert(t("session.alerts.sendFailedTitle"), t("session.alerts.sendFailedMessage"))
+        }
+      } else {
+        setInput((prev) => (prev.trim() ? `${prev} ${followupText}` : followupText))
+      }
+    },
+    [authenticateForMessage, sendMessage, model, agent, variant, t],
+  )
+
+  const handleUnrevert = useCallback(async () => {
+    await unrevertSession()
+    setInput("")
+    setAttachments([])
+  }, [unrevertSession])
+
   // In inverted mode, offset 0 = bottom. Show scroll button when scrolled away from bottom.
   const handleScroll = useCallback((event: any) => {
     const { contentOffset } = event.nativeEvent
     setShowScrollButton(contentOffset.y > 200)
+    setLiveFollow((prev) =>
+      reduceLiveFollow(prev, {
+        type: "scroll",
+        offsetY: contentOffset.y,
+        isDragging: isDraggingRef.current,
+      }),
+    )
   }, [])
+
+  const handleScrollBeginDrag = useCallback(() => {
+    isDraggingRef.current = true
+    setLiveFollow((prev) => reduceLiveFollow(prev, { type: "user-drag-begin" }))
+  }, [])
+
+  const handleScrollEndDrag = useCallback(() => {
+    isDraggingRef.current = false
+  }, [])
+
+  // Auto-scroll to bottom on incoming streaming content only when live follow is enabled (throttled to max once every 100ms)
+  const lastScrollTimeRef = useRef(0)
+  useEffect(() => {
+    if (liveFollow.isLiveFollow && messageData.length > 0) {
+      const now = Date.now()
+      if (now - lastScrollTimeRef.current > 100) {
+        lastScrollTimeRef.current = now
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true })
+      }
+    }
+  }, [messageData, liveFollow.isLiveFollow])
 
   // Debounce: onEndReached can fire multiple times during a single scroll gesture
   const loadingTriggered = useRef(false)
@@ -568,16 +1421,8 @@ export default function SessionScreen() {
 
   // Current agent display
   const currentAgent = agents.find((a) => a.name === agent)
-  const agentColor = currentAgent?.color || "#8b5cf6"
+  const agentColor = currentAgent?.color || (isDark ? "#ffffff" : "#0a0a0a")
   const modelLabel = model?.modelID ? model.modelID.split("/").pop() || model.modelID : "default"
-
-  // Variants for current model (for reasoning effort picker)
-  const currentModelVariants = useMemo(() => {
-    if (!model) return undefined
-    const provider = providers.find((p) => p.id === model.providerID)
-    const found = provider?.models.find((m) => m.id === model.modelID)
-    return found?.variants
-  }, [model, providers])
 
   return (
     <>
@@ -592,6 +1437,9 @@ export default function SessionScreen() {
                   <Text style={[s.dirText, isDark && s.dirTextDark]}>{shortDir}</Text>
                 </View>
               )}
+              <TouchableOpacity onPress={handleShareSession} hitSlop={8}>
+                <Ionicons name="share-outline" size={20} color={isDark ? "#888888" : "#666666"} />
+              </TouchableOpacity>
               <TouchableOpacity onPress={() => setShowInfo((v) => !v)} hitSlop={8}>
                 <Ionicons
                   name={showInfo ? "stats-chart" : "stats-chart-outline"}
@@ -619,7 +1467,7 @@ export default function SessionScreen() {
         // keyboard (#147). "padding" restores avoidance without depending
         // on native resize.
         behavior="padding"
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+        keyboardVerticalOffset={90}
       >
         {/* Session info pulldown */}
         <SessionInfo
@@ -642,7 +1490,7 @@ export default function SessionScreen() {
         {/* Error banner */}
         {sessionsError && (
           <View style={[s.banner, s.bannerError]}>
-            <Text style={s.bannerText}>{sessionsError}</Text>
+            <Text style={s.bannerText} selectable={true}>{sessionsError}</Text>
             <TouchableOpacity onPress={clearError} hitSlop={8}>
               <Ionicons name="close-circle" size={20} color="#ffffff" />
             </TouchableOpacity>
@@ -661,26 +1509,6 @@ export default function SessionScreen() {
           </View>
         )}
 
-        {/* Pending revert (from "Edit message") — offer a way back before it's
-            cleaned up by the next prompt. */}
-        {revertMessageID && (
-          <View style={[s.banner, s.bannerRevert]}>
-            <Text style={s.bannerText}>{t("session.banners.reverted")}</Text>
-            <TouchableOpacity
-              onPress={() => {
-                unrevertSession()
-                // The composer was prefilled with the reverted message's text/
-                // attachments (see applyRevertResult) — clear it so Undo doesn't
-                // leave a stale draft that could be sent as a duplicate.
-                setInput("")
-                setAttachments([])
-              }}
-              hitSlop={8}
-            >
-              <Text style={s.bannerAction}>{t("session.banners.undo")}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {isLoading ? (
           <View style={s.loading}>
@@ -692,21 +1520,22 @@ export default function SessionScreen() {
               ref={flatListRef}
               data={messageData}
               inverted
-              keyExtractor={(item) => item.message.id}
-              renderItem={({ item }) => (
-                <MessageBubble
-                  message={item.message}
-                  parts={item.parts}
-                  isDark={isDark}
-                  onLongPress={handleMessageLongPress}
-                />
-              )}
+              keyExtractor={(item) => item.id}
+              renderItem={renderMessage}
               contentContainerStyle={s.messageList}
               onScroll={handleScroll}
-              scrollEventThrottle={100}
+              onScrollBeginDrag={handleScrollBeginDrag}
+              onScrollEndDrag={handleScrollEndDrag}
+              scrollEventThrottle={16}
               onEndReached={handleLoadMore}
               onEndReachedThreshold={0.5}
-              // Prevent jump when older messages are prepended
+              keyboardDismissMode="on-drag"
+              keyboardShouldPersistTaps="handled"
+              maxToRenderPerBatch={10}
+              windowSize={7}
+              initialNumToRender={10}
+              updateCellsBatchingPeriod={50}
+              removeClippedSubviews={false}
               maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
               ListFooterComponent={
                 loadingMore ? (
@@ -737,43 +1566,6 @@ export default function SessionScreen() {
         {/* Status */}
         {currentSession && <StatusIndicator sessionID={currentSession.id} isDark={isDark} />}
 
-        {/* Subagents */}
-        {subagents.length > 0 && (
-          <View style={[s.subagentSection, isDark && s.subagentSectionDark]}>
-            <Text style={[s.subagentHeader, isDark && s.subagentHeaderDark]}>
-              Subagents ({subagents.length})
-            </Text>
-            {subagentsLoading ? (
-              <ActivityIndicator size="small" color={isDark ? "#ffffff" : "#0a0a0a"} />
-            ) : (
-              subagents.map((sa) => (
-                <TouchableOpacity
-                  key={sa.id}
-                  style={[s.subagentItem, isDark && s.subagentItemDark]}
-                  onPress={() => router.push(`/session/${sa.id}?directory=${sa.directory}`)}
-                >
-                  <View style={s.subagentItemContent}>
-                    <Ionicons name="chevron-forward" size={14} color={isDark ? "#666666" : "#999999"} />
-                    <View style={s.subagentItemText}>
-                      <Text style={[s.subagentTitle, isDark && s.subagentTitleDark]} numberOfLines={1}>
-                        {sa.title}
-                      </Text>
-                      <Text style={[s.subagentMeta, isDark && s.subagentMetaDark]} numberOfLines={1}>
-                        {sa.time.updated
-                          ? new Date(sa.time.updated).toLocaleDateString()
-                          : "—"}
-                      </Text>
-                    </View>
-                    {sa.parentID && (
-                      <View style={[s.subagentDot, { backgroundColor: "#8b5cf6" }]} />
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
-        )}
-
         {/* Permissions */}
         {permissions.map((perm) => (
           <PermissionPrompt
@@ -800,12 +1592,52 @@ export default function SessionScreen() {
           <SlashPopover query={slashQuery} commands={allCommands} isDark={isDark} onSelect={handleSlashSelect} />
         )}
 
+        {/* File @ mention popover */}
+        {mentionActive && (
+          <FileMentionPopover
+            query={mentionQuery}
+            client={sessionClient}
+            directory={currentSession?.directory}
+            isDark={isDark}
+            onSelect={handleMentionSelect}
+          />
+        )}
+
+        {/* Revert & Restore Dock */}
+        {revertMessageID && (
+          <RevertDock
+            revertMessageID={revertMessageID}
+            messages={messages}
+            isDark={isDark}
+            onUnrevert={handleUnrevert}
+          />
+        )}
+
+        {/* Live Todo Tracking Dock */}
+        {parts && (
+          <TodoDock
+            parts={parts}
+            isDark={isDark}
+            onOpenSheet={() => todoSheetRef.current?.expand()}
+          />
+        )}
+
+        {/* Suggested Next Steps / Followup Dock */}
+        <FollowupDock
+          messages={messages}
+          parts={parts}
+          isSending={isSending}
+          isBusy={isWorking}
+          isDark={isDark}
+          onSelectFollowup={handleSelectFollowup}
+        />
+
         {/* Agent/model toolbar */}
         <View style={[s.toolbar, isDark && s.toolbarDark]}>
           <TouchableOpacity
             style={[s.agentChip, { borderColor: agentColor }]}
-            onPress={() => cycleAgent()}
-            onLongPress={() => cycleAgent(-1)}
+            onPress={() => agentSheetRef.current?.expand()}
+            onLongPress={() => cycleAgent()}
           >
             <View style={[s.agentDot, { backgroundColor: agentColor }]} />
             <Text style={[s.agentLabel, isDark && s.textWhite]}>{agent || "build"}</Text>
@@ -817,7 +1649,7 @@ export default function SessionScreen() {
             onPress={() => modelSheetRef.current?.expand()}
             testID="model-chip"
           >
-            <Ionicons name="hardware-chip-outline" size={14} color={isDark ? "#888888" : "#666666"} />
+            <ModelLogo providerID={model?.providerID} modelID={model?.modelID} isDark={isDark} size={13} />
             <Text style={[s.modelLabel, isDark && s.metaDark]} numberOfLines={1}>
               {modelLabel}
             </Text>
@@ -825,13 +1657,42 @@ export default function SessionScreen() {
 
           {currentModelVariants && Object.keys(currentModelVariants).length > 0 && (
             <TouchableOpacity
-              style={[s.variantChip, isDark && s.variantChipDark, variant && s.variantChipActive]}
+              style={[
+                s.variantChip,
+                isDark && s.variantChipDark,
+                variant && s.variantChipActive,
+                variant && isDark && s.variantChipActiveDark,
+              ]}
               onPress={() => variantSheetRef.current?.expand()}
               testID="variant-chip"
             >
-              <Ionicons name="flash-outline" size={14} color={variant ? "#8b5cf6" : isDark ? "#888888" : "#666666"} />
-              <Text style={[s.variantLabel, isDark && s.metaDark, variant && s.variantLabelActive]} numberOfLines={1}>
+              <MaterialCommunityIcons
+                name="brain"
+                size={14}
+                color={variant ? (isDark ? "#ffffff" : "#0a0a0a") : isDark ? "#888888" : "#666666"}
+              />
+              <Text
+                style={[
+                  s.variantLabel,
+                  isDark && s.metaDark,
+                  variant && (isDark ? s.textWhite : s.variantLabelActive),
+                ]}
+                numberOfLines={1}
+              >
                 {variant ? variant.charAt(0).toUpperCase() + variant.slice(1) : t("session.toolbar.auto")}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {subagents.length > 0 && (
+            <TouchableOpacity
+              style={[s.subagentChip, isDark && s.subagentChipDark]}
+              onPress={() => subagentsSheetRef.current?.expand()}
+              testID="subagent-chip"
+            >
+              <Ionicons name="git-branch-outline" size={13} color={isDark ? "#ffffff" : "#0a0a0a"} />
+              <Text style={[s.subagentChipText, isDark && s.textWhite]} numberOfLines={1}>
+                {subagents.length} Subagent{subagents.length > 1 ? "s" : ""}
               </Text>
             </TouchableOpacity>
           )}
@@ -869,7 +1730,6 @@ export default function SessionScreen() {
               onChangeText={speech.listening ? undefined : setInput}
               editable={!speech.listening}
               multiline
-              maxLength={10000}
               testID="chat-message-input"
             />
             {/* Stop button: only when busy and no input */}
@@ -892,8 +1752,17 @@ export default function SessionScreen() {
             )}
             {/* Send button: when there's input */}
             {!speech.listening && (input.trim() || attachments.length > 0) && (
-              <TouchableOpacity style={s.sendBtn} onPress={handleSend} testID="chat-send-button">
-                <Ionicons name="send" size={20} color="#ffffff" />
+              <TouchableOpacity
+                style={[s.sendBtn, isDark && s.sendBtnDark]}
+                onPress={handleSend}
+                testID="chat-send-button"
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="arrow-up"
+                  size={20}
+                  color={isDark ? "#0a0a0a" : "#ffffff"}
+                />
               </TouchableOpacity>
             )}
           </View>
@@ -916,6 +1785,89 @@ export default function SessionScreen() {
         selected={variant}
         isDark={isDark}
         onSelect={setVariant}
+      />
+
+      {/* Connect AI provider bottom sheet */}
+      <ConnectProviderSheet sheetRef={providerSheetRef} isDark={isDark} />
+
+      {/* MCP tools management bottom sheet */}
+      <McpSheet sheetRef={mcpSheetRef} isDark={isDark} />
+
+      {/* System & token status bottom sheet */}
+      <StatusSheet sheetRef={statusSheetRef} isDark={isDark} />
+
+      {/* Workspace / Directory browser bottom sheet */}
+      <DirectoryBrowserSheet
+        sheetRef={workspaceSheetRef}
+        startDirectory={currentSession?.directory || null}
+        clientForDirectory={clientForDirectory}
+        isDark={isDark}
+        onSelect={handleWorkspaceSelect}
+        showFiles={true}
+        onSelectFile={handleSelectFile}
+      />
+
+      {/* OpenCode native server configuration bottom sheet */}
+      <OpenCodeSettingsSheet sheetRef={opencodeSettingsSheetRef} isDark={isDark} />
+
+      {/* Skills browser bottom sheet */}
+      <SkillsSheet
+        sheetRef={skillsSheetRef}
+        isDark={isDark}
+        onSelectSkill={handleSelectSkill}
+      />
+
+      {/* Review git changes bottom sheet */}
+      <ReviewDiffSheet
+        sheetRef={reviewDiffSheetRef}
+        isDark={isDark}
+        sessionClient={sessionClient}
+        sessionID={currentSession?.id}
+        onQuoteLine={handleQuoteDiffLine}
+      />
+
+      {/* Subagents / child sessions bottom sheet */}
+      <SubagentsSheet
+        sheetRef={subagentsSheetRef}
+        isDark={isDark}
+        subagents={subagents}
+        loading={subagentsLoading}
+        onRefresh={loadSubagents}
+        onSelectSubagent={handleSelectSubagent}
+      />
+
+      {/* Agent picker bottom sheet */}
+      <AgentPickerSheet
+        sheetRef={agentSheetRef}
+        isDark={isDark}
+        agents={agents}
+        currentAgent={agent}
+        onSelectAgent={setAgent}
+      />
+
+      {/* In-app file viewer & preview bottom sheet */}
+      <FileViewerSheet
+        sheetRef={fileViewerSheetRef}
+        isDark={isDark}
+        filePath={selectedFilePath}
+        client={sessionClient}
+      />
+
+      {/* Tasks & Todo tracker bottom sheet */}
+      <TodoSheet
+        sheetRef={todoSheetRef}
+        isDark={isDark}
+        parts={parts}
+      />
+
+      {/* Sessions switcher bottom sheet */}
+      <SessionsSheet
+        sheetRef={sessionsSheetRef}
+        isDark={isDark}
+        currentSessionID={currentSession?.id}
+        currentDirectory={currentSession?.directory || (directory as string | undefined)}
+        onSelectSession={handleSelectOtherSession}
+        onCreateNewSession={handleCreateSessionFromSheet}
       />
     </>
   )
@@ -1021,9 +1973,28 @@ const s = StyleSheet.create({
     paddingVertical: 4,
   },
   variantChipDark: { backgroundColor: "#1a1a1a" },
-  variantChipActive: { backgroundColor: "#f5f3ff" },
+  variantChipActive: {
+    backgroundColor: "#e5e5e5",
+    borderWidth: 1,
+    borderColor: "#cccccc",
+  },
+  variantChipActiveDark: {
+    backgroundColor: "#262626",
+    borderColor: "#444444",
+  },
   variantLabel: { fontSize: 12, color: "#666666" },
-  variantLabelActive: { color: "#8b5cf6" },
+  variantLabelActive: { color: "#0a0a0a", fontWeight: "600" },
+  subagentChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  subagentChipDark: { backgroundColor: "#222222" },
+  subagentChipText: { fontSize: 12, fontWeight: "600", color: "#0a0a0a" },
 
   // Input
   inputContainer: {
@@ -1064,6 +2035,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     marginLeft: 8,
   },
+  sendBtnDark: { backgroundColor: "#ffffff" },
   sendBtnDisabled: { backgroundColor: "#cccccc" },
   micBtn: {
     width: 40,

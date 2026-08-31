@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useColorScheme, Linking } from "react-native"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useColorScheme } from "react-native"
 import { Stack, useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { useTranslation } from "react-i18next"
-import { MessageBubble, PermissionPrompt } from "../src/components/chat"
+import { MessageBubble, PermissionPrompt, SetupGuideSheet } from "../src/components/chat"
 import { buildDemoScript, buildDemoCompletionMessage, buildDemoDenialMessage } from "../src/lib/demo-script"
-import { SETUP_GUIDE_URL } from "../src/lib/links"
+import type BottomSheet from "@gorhom/bottom-sheet"
 import { track, AnalyticsEvent } from "../src/lib/analytics"
 import {
   demoStepAdvancedProps,
@@ -30,6 +30,7 @@ export default function DemoScreen() {
   // Built once per mount from pure, hardcoded data (src/lib/demo-script.ts).
   const script = useMemo(() => buildDemoScript(), [])
   const [reply, setReply] = useState<DemoPermissionReply | null>(null)
+  const setupGuideSheetRef = useRef<BottomSheet>(null)
 
   // Fires once per screen mount — this is a fully offline, consent-gated
   // event (track() is a no-op without telemetry consent, same as every
@@ -61,7 +62,7 @@ export default function DemoScreen() {
       <Stack.Screen options={{ title: t("demo.title"), presentation: "card" }} />
       <View style={[s.container, isDark && s.containerDark]} testID="demo-screen">
         <View style={[s.banner, isDark && s.bannerDark]} testID="demo-banner">
-          <Ionicons name="play-circle-outline" size={16} color="#8b5cf6" />
+          <Ionicons name="play-circle-outline" size={16} color="#0a0a0a" />
           <Text style={s.bannerText}>{t("demo.banner")}</Text>
         </View>
 
@@ -94,13 +95,17 @@ export default function DemoScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={s.setupGuideLink}
-              onPress={() => Linking.openURL(SETUP_GUIDE_URL)}
+              onPress={() => setupGuideSheetRef.current?.expand()}
               testID="demo-setup-guide-link"
             >
               <Text style={s.setupGuideLinkText}>{t("demo.setupGuideLink")}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
+        <SetupGuideSheet
+          sheetRef={setupGuideSheetRef}
+          isDark={isDark}
+        />
       </View>
     </>
   )
@@ -118,12 +123,12 @@ const s = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: "#f5f3ff",
+    backgroundColor: "#f5f5f5",
     borderBottomWidth: 1,
-    borderBottomColor: "#e9d5ff",
+    borderBottomColor: "#e5e5e5",
   },
-  bannerDark: { backgroundColor: "#1a1030", borderBottomColor: "#2a1a4a" },
-  bannerText: { fontSize: 13, fontWeight: "600", color: "#6d28d9", flex: 1 },
+  bannerDark: { backgroundColor: "#1a1a1a", borderBottomColor: "#2a2a2a" },
+  bannerText: { fontSize: 13, fontWeight: "600", color: "#0a0a0a", flex: 1 },
 
   scrollContent: { padding: 16, paddingBottom: 40 },
 
@@ -148,7 +153,7 @@ const s = StyleSheet.create({
   },
   connectButtonText: { color: "#ffffff", fontWeight: "600", fontSize: 15 },
   hostedCtaLink: { marginTop: 14 },
-  hostedCtaLinkText: { fontSize: 14, fontWeight: "600", color: "#8b5cf6", textAlign: "center" },
+  hostedCtaLinkText: { fontSize: 14, fontWeight: "600", color: "#0a0a0a", textAlign: "center" },
   setupGuideLink: { marginTop: 14 },
   setupGuideLinkText: { fontSize: 14, fontWeight: "600", color: "#6366f1" },
 })

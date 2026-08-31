@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useRef, useState, memo } from "react"
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import BottomSheet, { BottomSheetBackdrop, BottomSheetFlatList, BottomSheetTextInput } from "@gorhom/bottom-sheet"
@@ -18,15 +18,19 @@ interface Props {
   onSelect: (directory: string) => void
   // Called whenever the sheet fully closes (selection or cancel).
   onDismiss?: () => void
+  showFiles?: boolean
+  onSelectFile?: (filePath: string) => void
 }
 
-export function DirectoryBrowserSheet({
+export const DirectoryBrowserSheet = memo(function DirectoryBrowserSheet({
   sheetRef,
   startDirectory,
   clientForDirectory,
   isDark,
   onSelect,
   onDismiss,
+  showFiles = false,
+  onSelectFile,
 }: Props) {
   const { t } = useTranslation()
   const [browseDir, setBrowseDir] = useState<string | null>(null)
@@ -57,7 +61,7 @@ export function DirectoryBrowserSheet({
         .list({ path: "." })
         .then((items) => {
           if (loadToken.current !== token) return
-          setEntries(items.filter((item) => item.type === "directory"))
+          setEntries(showFiles ? items : items.filter((item) => item.type === "directory"))
         })
         .catch((err) => {
           if (loadToken.current !== token) return
@@ -180,6 +184,8 @@ export function DirectoryBrowserSheet({
       // explicit snapPoints above are used directly. See GitHub issue #104.
       enableDynamicSizing={false}
       enablePanDownToClose
+      enableContentPanningGesture={false}
+      enableHandlePanningGesture={true}
       keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
@@ -197,7 +203,7 @@ export function DirectoryBrowserSheet({
             <Ionicons
               name="arrow-up-circle-outline"
               size={22}
-              color={canGoUp ? (isDark ? "#8b5cf6" : "#6d28d9") : isDark ? "#3a3a3a" : "#dddddd"}
+              color={canGoUp ? (isDark ? "#ffffff" : "#0a0a0a") : isDark ? "#3a3a3a" : "#dddddd"}
             />
           </TouchableOpacity>
           <Text style={[s.path, isDark && s.dimDark]} numberOfLines={1} ellipsizeMode="head">
@@ -218,7 +224,7 @@ export function DirectoryBrowserSheet({
               <Ionicons
                 name={root.label === "Home" ? "home-outline" : "layers-outline"}
                 size={14}
-                color={browseDir === root.path ? "#ffffff" : isDark ? "#c4b5fd" : "#6d28d9"}
+                color={browseDir === root.path ? "#ffffff" : isDark ? "#ffffff" : "#0a0a0a"}
               />
               <Text
                 style={[
@@ -258,23 +264,32 @@ export function DirectoryBrowserSheet({
       <BottomSheetFlatList
         data={entries}
         keyExtractor={(item: FileEntry) => item.absolute}
-        renderItem={({ item }: { item: FileEntry }) => (
-          <TouchableOpacity
-            style={[s.row, isDark && s.rowDark]}
-            onPress={() => enter(item.absolute)}
-            testID={`directory-row-${item.name}`}
-          >
-            <Ionicons
-              name="folder-outline"
-              size={20}
-              color={item.ignored ? (isDark ? "#555555" : "#bbbbbb") : isDark ? "#888888" : "#666666"}
-            />
-            <Text style={[s.rowLabel, isDark && s.white, item.ignored && s.rowLabelDim]} numberOfLines={1}>
-              {item.name}
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color={isDark ? "#555555" : "#cccccc"} />
-          </TouchableOpacity>
-        )}
+        renderItem={({ item }: { item: FileEntry }) => {
+          const isDir = item.type === "directory"
+          return (
+            <TouchableOpacity
+              style={[s.row, isDark && s.rowDark]}
+              onPress={() => {
+                if (isDir) {
+                  enter(item.absolute)
+                } else {
+                  onSelectFile?.(item.absolute)
+                }
+              }}
+              testID={`directory-row-${item.name}`}
+            >
+              <Ionicons
+                name={isDir ? "folder-outline" : "document-text-outline"}
+                size={20}
+                color={item.ignored ? (isDark ? "#555555" : "#bbbbbb") : isDark ? "#888888" : "#666666"}
+              />
+              <Text style={[s.rowLabel, isDark && s.white, item.ignored && s.rowLabelDim]} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={isDark ? "#555555" : "#cccccc"} />
+            </TouchableOpacity>
+          )
+        }}
         contentContainerStyle={s.list}
         ListHeaderComponent={
           loading ? (
@@ -315,7 +330,7 @@ export function DirectoryBrowserSheet({
       </View>
     </BottomSheet>
   )
-}
+})
 
 const s = StyleSheet.create({
   sheet: { backgroundColor: "#ffffff" },
@@ -348,16 +363,16 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 14,
-    backgroundColor: "#e8e5f0",
+    backgroundColor: "#e8e8e8",
   },
-  rootChipDark: { backgroundColor: "#2a2040" },
-  rootChipActive: { backgroundColor: "#8b5cf6" },
+  rootChipDark: { backgroundColor: "#2a2a2a" },
+  rootChipActive: { backgroundColor: "#0a0a0a" },
   rootChipText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#6d28d9",
+    color: "#0a0a0a",
   },
-  rootChipTextDark: { color: "#c4b5fd" },
+  rootChipTextDark: { color: "#ffffff" },
   rootChipTextActive: { color: "#ffffff" },
   inputWrap: {
     flexDirection: "row",

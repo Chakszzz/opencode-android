@@ -1,4 +1,4 @@
-package cc.agentlabs.opencode
+package com.erprj.opencode
 
 import android.os.Build
 import android.os.Bundle

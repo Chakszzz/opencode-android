@@ -6,11 +6,13 @@ import i18next from "i18next"
 import { initReactI18next } from "react-i18next"
 import * as Localization from "expo-localization"
 import en from "./en.json"
+import id from "./id.json"
 import zhHans from "./zh-Hans.json"
 import { resolveLocale, FALLBACK_LOCALE, type LocalePreference } from "./locale-resolve"
 
 const resources = {
   en: { translation: en },
+  id: { translation: id },
   "zh-Hans": { translation: zhHans },
 }
 

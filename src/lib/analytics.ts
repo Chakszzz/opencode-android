@@ -96,6 +96,12 @@ export enum AnalyticsEvent {
   DemoCompleted = "demo_completed",
   /** User tapped "Connect your own server" on the demo's CTA card. */
   DemoExitedToConnect = "demo_exited_to_connect",
+  /** PostHog in-app survey response submitted. */
+  SurveySent = "survey sent",
+  /** PostHog in-app survey dismissed. */
+  SurveyDismissed = "survey dismissed",
+  /** Custom user feedback submitted. */
+  UserFeedback = "user_feedback",
 }
 
 /** Where a connection test/failure was initiated from. The activation funnel
@@ -158,7 +164,7 @@ export type AnalyticsProps = Record<string, string | number | boolean | null>
 
 /** No-op unless consent has been granted (initAnalytics() was called) and a
  *  key is configured. Never throws. */
-export function track(event: AnalyticsEvent, props?: AnalyticsProps) {
+export function track(event: AnalyticsEvent | string, props?: AnalyticsProps) {
   if (!enabled || !client) return
   try {
     client.capture(event, props)
@@ -185,4 +191,53 @@ export async function trackAppOpened() {
     // SecureStore unavailable — still fire the event, just without the flag.
   }
   track(AnalyticsEvent.AppOpened, { is_first_open: isFirstOpen })
+}
+
+/** Submit an in-app survey response to PostHog. Matches standard PostHog survey capture schema. */
+export function submitSurveyResponse(
+  surveyId: string,
+  surveyName: string,
+  response: string | number | boolean | Record<string, unknown>,
+) {
+  if (!enabled || !client) return
+  try {
+    const responsePayload = typeof response === "object" ? JSON.stringify(response) : response
+    client.capture(AnalyticsEvent.SurveySent, {
+      $survey_id: surveyId,
+      $survey_name: surveyName,
+      $survey_response: responsePayload,
+    })
+    log.info("analytics", "survey response submitted", `id=${surveyId}`)
+  } catch (e) {
+    log.warn("analytics", "submit survey response failed", String(e))
+  }
+}
+
+/** Dismiss an active PostHog survey. */
+export function dismissSurvey(surveyId: string, surveyName?: string) {
+  if (!enabled || !client) return
+  try {
+    client.capture(AnalyticsEvent.SurveyDismissed, {
+      $survey_id: surveyId,
+      $survey_name: surveyName || "unknown",
+    })
+    log.info("analytics", "survey dismissed", `id=${surveyId}`)
+  } catch (e) {
+    log.warn("analytics", "dismiss survey failed", String(e))
+  }
+}
+
+/** Submit custom user feedback (rating, category, comment) directly to PostHog. */
+export function submitFeedback(rating: number, comment: string, category: string = "general") {
+  if (!enabled || !client) return
+  try {
+    client.capture(AnalyticsEvent.UserFeedback, {
+      rating,
+      comment: comment.slice(0, 1000), // clamp length
+      category,
+    })
+    log.info("analytics", "user feedback submitted", `category=${category}, rating=${rating}`)
+  } catch (e) {
+    log.warn("analytics", "submit feedback failed", String(e))
+  }
 }

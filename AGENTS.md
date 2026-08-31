@@ -6,6 +6,11 @@ See [`.agents/retro.md`](.agents/retro.md) for lessons from past tasks. Read ent
 
 ## Agent Operating Rules (read first)
 
+**CRITICAL: NEVER execute destructive Git commands:**
+- **STRICTLY FORBIDDEN**: `git checkout -- <file>`, `git checkout <file>`, `git restore <file>`, `git reset`, `git clean`, `git stash drop`, or any command that discards uncommitted working directory changes.
+- The workspace constantly contains uncommitted local changes, newly implemented features, and SDK methods across multiple files. Running `git checkout` or `git restore` wipes valid code and breaks dependent components.
+- If you made a syntax error or wrong edit, fix the code using file editing tools (`replace_file_content` / `write_to_file`) or manually revert only the specific lines you modified. NEVER use Git to reset/checkout files.
+
 **Failure taxonomy — classify every failure before acting. Escalate cheapest-first; never skip a rung or repeat one:**
 - **transient** (network blip, flaky): retry at most 2×.
 - **code** (your bug, wrong path, bad arg): fix, then retry.
@@ -40,19 +45,49 @@ React Native / Expo mobile client for opencode. Connects to an opencode server i
 ```
 app/                    # Expo Router file-based routing
 ├── (tabs)/             # Tab navigation (sessions, connections, settings)
-├── session/[id].tsx    # Chat screen
+├── session/[id].tsx    # Chat screen (composer, messages, slash popover, bottom sheets)
 └── connection/         # Add/edit connection screens
 src/
 ├── components/         # Reusable UI components
+│   ├── chat/           # Chat & interactive bottom sheets
+│   │   ├── SlashPopover.tsx          # Slash command palette (/)
+│   │   ├── FileMentionPopover.tsx    # File/folder mention autocomplete (@)
+│   │   ├── ConnectProviderSheet.tsx  # AI provider, custom provider (Ollama/vLLM), & API keys
+│   │   ├── OpenCodeSettingsSheet.tsx # Native server config & opencode.json editor
+│   │   ├── McpSheet.tsx              # MCP servers & tools toggle
+│   │   ├── StatusSheet.tsx           # Context tokens, model info, health stats
+│   │   ├── SkillsSheet.tsx           # Available skills browser & prompt injector
+│   │   ├── ReviewDiffSheet.tsx       # Visual Git diff viewer with line quoting
+│   │   ├── SubagentsSheet.tsx        # Child subagent sessions drawer
+│   │   ├── AgentPickerSheet.tsx      # Agent mode switcher (build, plan, etc.)
+│   │   ├── DirectoryBrowserSheet.tsx # Server filesystem workspace browser
+│   │   ├── TodoSheet.tsx             # Interactive task checklist tracker (/todo, todowrite)
+│   │   ├── TodoDock.tsx              # Live task progress & checklist dock above composer
+│   │   ├── FollowupDock.tsx          # Context-aware smart follow-up suggestions dock
+│   │   ├── RevertDock.tsx            # Session rollback banner with instant restore/undo
+│   │   ├── SessionsSheet.tsx         # In-chat session switcher drawer (/sessions, /switch)
+│   │   ├── DiffView.tsx              # Line-by-line visual diff renderer & patch parser
+│   │   ├── context-breakdown.ts      # Context breakdown token distribution estimator
+│   │   ├── turn-grouping.ts          # Turn-based conversation grouper (merges assistant turn parts & errors)
+│   │   ├── ModelPicker.tsx           # Model selector sheet
+│   │   └── VariantPicker.tsx         # Reasoning effort / model variants
 │   ├── markdown/       # Markdown renderer (wraps react-native-marked)
+│   │   ├── Markdown.tsx              # Keyed block renderer
+│   │   └── CodeBlock.tsx             # Syntax-highlighted code block with line numbers & copy
 │   └── AuthGate.tsx    # Biometric auth gate
 ├── lib/
-│   ├── sdk.ts          # HTTP + SSE client for opencode server API
-│   └── types.ts        # Re-exported types
+│   ├── sdk.ts          # Full HTTP + SSE client for OpenCode server API
+│   ├── types.ts        # Re-exported types
+│   ├── scroll-config.ts # Shared horizontal scroll configs for wide code & diffs
+│   └── i18n/           # Internationalization & translation dictionary
+│       ├── en.json     # English strings
+│       ├── id.json     # Indonesian strings (Bahasa Indonesia)
+│       └── zh-Hans.json# Simplified Chinese strings (简体中文)
 └── stores/             # Zustand state stores
-    ├── sessions.ts     # Session list, messages, parts
+    ├── sessions.ts     # Session list, messages, parts, subagents
     ├── connections.ts  # Server connections, client lifecycle
     ├── events.ts       # SSE event stream, status tracking, permissions, questions
+    ├── catalog.ts      # Providers, models, agents, commands catalog
     └── auth.ts         # Biometric auth
 scripts/
 └── android-cua-smoke.py  # LLM-powered CUA E2E test
@@ -60,10 +95,53 @@ scripts/
 
 ## Key Patterns
 
-- **SSE for real-time**: The `events.ts` store connects to `/global/event` and dispatches to other stores
-- **Fire-and-forget sends**: `sendMessage` posts to the API but doesn't await response; SSE events drive all UI updates
-- **Session status**: Derived from `session.status` events (`idle`/`busy`/`retry`) + last part type for status text
-- **Markdown**: `react-native-marked` wrapped in our own `Markdown` component with custom `CodeBlock` (copy button). Designed to be swappable/publishable later.
+- **SSE for real-time**: The `events.ts` store connects to `/global/event` and dispatches to other stores.
+- **Fire-and-forget sends**: `sendMessage` posts to `/session/:id/prompt_async` without awaiting response; SSE events drive all UI updates.
+- **Native Slash Commands**: Slash commands (`/compact`, `/skills`, `/init`, `/review`, `/diff`, `/subagents`, `/settings`, `/status`, `/connect`, `/mcps`, `/workspaces`, `/todo`, `/sessions`, `/switch`) are wired directly to native OpenCode server endpoints and bottom sheets:
+  - `/review`: Executes the native OpenCode AI Code Review command on the server via `POST /session/:id/command`.
+  - `/diff`: Opens the visual Git diff bottom sheet (`ReviewDiffSheet`) with interactive line tapping to quote diff lines directly into composer.
+  - `/todo`: Opens `TodoSheet` displaying active task progress, subtasks, and completion checkmarks parsed from `todowrite` tool parts.
+  - `/sessions` / `/switch`: Opens `SessionsSheet` allowing instant switching across sessions and projects without exiting the chat view.
+  - `/status`: Opens `StatusSheet` with live health latency, token metrics, and Context Distribution breakdown.
+  - `/connect`: Opens `ConnectProviderSheet` supporting both preset providers and custom OpenAI-compatible endpoints (Ollama, vLLM, LMStudio, OpenRouter).
+- **Composer Mentions (`@` and `/`)**:
+  - `@`: Triggers `FileMentionPopover` fetching the server filesystem index via `client.file.list` to autocomplete file paths.
+  - `/`: Triggers `SlashPopover` to autocomplete commands.
+- **Tool Call Grouping & Collapsing**:
+  - When a message contains 3+ tool calls, `MessageBubble` collapses them into a summary badge (`⚡ N tools executed • Show/Hide`) with accessibility controls, auto-expanding whenever a tool is actively running.
+- **Session Actions**:
+  - **Fork from Message**: Long-pressing any user or assistant message allows branching the session from that point into a new session.
+  - **Revert / Edit Message**: Rolls back session state on the server and restores previous text and attachments into composer.
+  - **Export Transcript**: Shares or copies formatted markdown transcript to clipboard.
+- **Bottom Sheet Gestures**: Always use `@gorhom/bottom-sheet` with:
+  - `enableContentPanningGesture={false}` + `enableHandlePanningGesture={true}` to prevent scroll-to-close conflicts.
+  - Always use `BottomSheetScrollView`, `BottomSheetFlatList`, and `BottomSheetTextInput` inside bottom sheets.
+  - Always include a dedicated close (`X`) button in the sheet header.
+- **Markdown & Code Blocks**: `Markdown.tsx` uses `cloneElement` with array keys for stable block rendering; `CodeBlock.tsx` provides multi-language syntax highlighting, line numbers gutter, and copy action.
+
+## Internationalization (i18n)
+
+- **Supported Languages**:
+  - `en` (English - default)
+  - `id` (Bahasa Indonesia)
+  - `zh-Hans` (Simplified Chinese)
+- **Rules**:
+  - Never hardcode user-facing strings; always use `useTranslation()` (`const { t } = useTranslation()`).
+  - When adding new translation keys, **ALL THREE** translation files (`src/lib/i18n/en.json`, `id.json`, `zh-Hans.json`) must be updated in tandem.
+  - Key parity across all locales is strictly enforced by unit test `src/lib/i18n/catalog-parity.test.ts`.
+
+## Design & Color Conventions
+
+- **Monochrome Clean Theme**: Strictly **NO PURPLE / VIOLET** (`#8b5cf6`, `#6d28d9`, `#f5f3ff`, `#1e1b4b`, etc.).
+  - Primary text & accents: `#0a0a0a` (Light) / `#ffffff` (Dark).
+  - Backgrounds & cards: `#ffffff` / `#f5f5f5` / `#f9fafb` (Light) and `#0a0a0a` / `#141414` / `#1c1c1c` (Dark).
+  - Borders & dividers: `#e5e7eb` / `#e1e4e8` (Light) and `#262626` / `#30363d` (Dark).
+  - Badges & chips: `#f0f0f0` (Light) / `#222222` (Dark).
+- **Semantic Accents Only**:
+  - Green (`#16a34a` / `#22c55e`): Connected status, Git additions `+N`, success states.
+  - Red (`#dc2626` / `#ef4444`): Git deletions `-N`, errors, destructive actions.
+  - Blue (`#0969da` / `#3b82f6` / `#58a6ff`): Web URLs, markdown links, file paths in tool cards, code functions/identifiers.
+  - Amber (`#d97706` / `#f59e0b`): Warnings, reconnecting banners.
 
 ## Style Guide
 

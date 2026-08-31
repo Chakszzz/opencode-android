@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useTranslation } from "react-i18next"
@@ -8,7 +9,7 @@ interface Props {
   onReply: (reply: "once" | "always" | "reject") => void
 }
 
-export function PermissionPrompt({ permission, isDark, onReply }: Props) {
+export const PermissionPrompt = memo(function PermissionPrompt({ permission, isDark, onReply }: Props) {
   const { t } = useTranslation()
   return (
     <View style={[s.card, isDark && s.cardDark]}>
@@ -32,7 +33,7 @@ export function PermissionPrompt({ permission, isDark, onReply }: Props) {
       </View>
     </View>
   )
-}
+})
 
 const s = StyleSheet.create({
   card: {

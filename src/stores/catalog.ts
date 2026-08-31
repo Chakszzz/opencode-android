@@ -32,6 +32,7 @@ interface CatalogState {
   agents: Agent[]
   commands: Command[]
   providers: Provider[]
+  allProviders: Provider[]
   defaults: Record<string, string>
   // Current selections
   agent: string // agent name, e.g. "build"
@@ -51,6 +52,7 @@ export const useCatalog = create<CatalogState>((set, get) => ({
   agents: [],
   commands: [],
   providers: [],
+  allProviders: [],
   defaults: {},
   agent: "",
   model: null,
@@ -75,26 +77,25 @@ export const useCatalog = create<CatalogState>((set, get) => ({
     const raw = providerResult
     const connected = new Set(Array.isArray(raw?.connected) ? raw.connected : [])
     const defaults = raw?.default || {}
-    const providers: Provider[] = Array.isArray(raw?.all)
-      ? raw.all
-          .filter((p) => connected.has(p.id))
-          .map((p) => ({
-            id: p.id,
-            name: p.name || p.id,
-            connected: connected.has(p.id),
-            models: Object.values(p.models || {})
-              .filter((m) => m.status !== "deprecated")
-              .map((m) => ({
-                id: m.id,
-                name: m.name || m.id,
-                reasoning: m.reasoning ?? false,
-                attachment: m.attachment ?? false,
-                limit: m.limit,
-                variants: m.variants,
-              })),
-          }))
-          .filter((p) => p.models.length > 0)
+    const allProviders: Provider[] = Array.isArray(raw?.all)
+      ? raw.all.map((p) => ({
+          id: p.id,
+          name: p.name || p.id,
+          connected: connected.has(p.id),
+          models: Object.values(p.models || {})
+            .filter((m) => m.status !== "deprecated")
+            .map((m) => ({
+              id: m.id,
+              name: m.name || m.id,
+              reasoning: m.reasoning ?? false,
+              attachment: m.attachment ?? false,
+              limit: m.limit,
+              variants: m.variants,
+            })),
+        }))
       : []
+
+    const providers = allProviders.filter((p) => p.connected && p.models.length > 0)
 
     // Filter out hidden agents
     const visible = agents.filter((a) => !a.hidden)
@@ -118,6 +119,7 @@ export const useCatalog = create<CatalogState>((set, get) => ({
       agents: visible,
       commands,
       providers,
+      allProviders,
       defaults,
       agent,
       model,

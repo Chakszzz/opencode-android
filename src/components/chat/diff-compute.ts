@@ -99,3 +99,35 @@ export function computeDiff(before: string, after: string): DiffLine[] {
 
   return collapsed
 }
+
+export function parsePatchDiff(patch: string): DiffLine[] {
+  const lines = patch.split(/\r?\n/)
+  const result: DiffLine[] = []
+  for (const line of lines) {
+    if (
+      line.startsWith("--- ") ||
+      line.startsWith("+++ ") ||
+      line.startsWith("index ") ||
+      line.startsWith("diff --git ") ||
+      line === "\\ No newline at end of file"
+    ) {
+      continue
+    }
+    if (line.startsWith("@@")) {
+      result.push({ type: "context", text: line })
+    } else if (line.startsWith("+")) {
+      result.push({ type: "add", text: line.slice(1) })
+    } else if (line.startsWith("-")) {
+      result.push({ type: "remove", text: line.slice(1) })
+    } else if (line.startsWith(" ")) {
+      result.push({ type: "context", text: line.slice(1) })
+    } else if (line.length > 0) {
+      result.push({ type: "context", text: line })
+    }
+  }
+  if (result.length > MAX_RENDERED_LINES) {
+    return [...result.slice(0, MAX_RENDERED_LINES), truncationMarker(result.length)]
+  }
+  return result
+}
+

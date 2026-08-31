@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { computeDiff } from "./diff-compute.ts"
+import { computeDiff, parsePatchDiff } from "./diff-compute.ts"
 
 // GitHub bug: computeDiff split on a literal "\n", so a CRLF `before` diffed
 // against an LF `after` treated every line as changed (each "line\r" !==
@@ -52,3 +52,23 @@ test("computeDiff falls back to a truncated diff for huge inputs instead of hang
   assert.equal(last?.type, "context")
   assert.match(last?.text ?? "", /diff too large to display in full/)
 })
+
+test("parsePatchDiff correctly parses unified diff patch into DiffLine rows", () => {
+  const patch = `diff --git a/file.ts b/file.ts\nindex 1234567..89abcdef 100644\n--- a/file.ts\n+++ b/file.ts\n@@ -1,5 +1,5 @@\n context line\n---i;\n+++i;\n-old line\n+new line\n\\ No newline at end of file`
+  const result = parsePatchDiff(patch)
+
+  assert.equal(result.length, 6)
+  assert.equal(result[0]?.type, "context")
+  assert.equal(result[0]?.text, "@@ -1,5 +1,5 @@")
+  assert.equal(result[1]?.type, "context")
+  assert.equal(result[1]?.text, "context line")
+  assert.equal(result[2]?.type, "remove")
+  assert.equal(result[2]?.text, "--i;")
+  assert.equal(result[3]?.type, "add")
+  assert.equal(result[3]?.text, "++i;")
+  assert.equal(result[4]?.type, "remove")
+  assert.equal(result[4]?.text, "old line")
+  assert.equal(result[5]?.type, "add")
+  assert.equal(result[5]?.text, "new line")
+})
+

@@ -28,3 +28,12 @@ android/app/src/main/assets/index.android.bundle
 artifacts/screenshots/
 positive-S*.png
 negative-S*.png
+
+# Internal agent & tool scratch directories
+.playwright-mcp/
+.autopilot/
+.tasks/
+.supervisor/
+.claude/
+.agents/
+
