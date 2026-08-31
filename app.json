@@ -1,0 +1,84 @@
+{
+  "expo": {
+    "name": "OpenCode",
+    "slug": "opencode-android",
+    "version": "0.4.16",
+    "orientation": "portrait",
+    "scheme": "opencode",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.erprj.opencode",
+      "buildNumber": "1",
+      "entitlements": {
+        "aps-environment": "production"
+      },
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Use Face ID to unlock OpenCode and access your sessions securely.",
+        "NSSpeechRecognitionUsageDescription": "OpenCode uses speech recognition so you can dictate prompts to your AI coding agent hands-free.",
+        "NSMicrophoneUsageDescription": "OpenCode uses the microphone to capture your voice when using speech-to-text input.",
+        "NSPhotoLibraryUsageDescription": "OpenCode can attach images from your photo library to messages to your AI coding agent.",
+        "NSCameraUsageDescription": "OpenCode can capture images with your camera and attach them to messages to your AI coding agent.",
+        "NSLocalNetworkUsageDescription": "OpenCode uses your local network to connect to self-hosted OpenCode servers running on your LAN.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsArbitraryLoadsInWebContent": false
+        },
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.erprj.opencode",
+      "versionCode": 43,
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a0a"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "./plugins/withAbiSplits.js",
+      "expo-router",
+      "expo-secure-store",
+      "expo-local-authentication",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#ffffff",
+          "sounds": []
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "OpenCode can attach images from your photo library to messages to your AI coding agent.",
+          "cameraPermission": "OpenCode can capture images with your camera and attach them to messages to your AI coding agent.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "OpenCode uses the microphone to capture your voice when using speech-to-text input.",
+          "speechRecognitionPermission": "OpenCode uses speech recognition so you can dictate prompts to your AI coding agent hands-free."
+        }
+      ],
+      "expo-localization"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

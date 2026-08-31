@@ -1,0 +1,516 @@
+{
+  "common": {
+    "cancel": "Batal",
+    "ok": "OK",
+    "error": "Kesalahan",
+    "delete": "Hapus",
+    "retry": "Coba Lagi",
+    "save": "Simpan",
+    "shareReport": "Bagikan laporan"
+  },
+  "settings": {
+    "sections": {
+      "security": "Keamanan",
+      "notifications": "Notifikasi",
+      "privacy": "Privasi",
+      "about": "Tentang"
+    },
+    "security": {
+      "biometricOpen": {
+        "label": "Kunci Biometrik Saat Buka",
+        "descriptionEnabled": "Gunakan Face ID atau Sidik Jari untuk membuka aplikasi",
+        "descriptionUnavailable": "Autentikasi biometrik tidak tersedia"
+      },
+      "biometricSend": {
+        "label": "Kunci Biometrik Saat Kirim",
+        "description": "Autentikasi sebelum mengirim pesan"
+      },
+      "lockNow": {
+        "label": "Kunci Aplikasi Sekarang",
+        "description": "Wajibkan autentikasi saat aplikasi dibuka kembali"
+      }
+    },
+    "notifications": {
+      "disabledNotice": "Notifikasi dinonaktifkan di tingkat sistem. Aktifkan di Pengaturan perangkat untuk menerima peringatan."
+    },
+    "privacy": {
+      "crashReporting": {
+        "label": "Laporan Crash & Analitik Penggunaan",
+        "description": "Bagikan laporan crash anonim (Sentry) dan analitik penggunaan (PostHog) untuk membantu meningkatkan OpenCode. Laporan diagnostik yang Anda bagikan juga dikirim ke kotak masuk dukungan kami. Kode atau prompt tidak disertakan."
+      },
+      "privacyPolicy": {
+        "label": "Kebijakan Privasi",
+        "description": "Data apa yang kami kumpulkan dan bagaimana penggunaannya"
+      }
+    },
+    "about": {
+      "version": "Versi",
+      "github": {
+        "label": "GitHub",
+        "description": "Lihat kode sumber"
+      },
+      "docs": {
+        "label": "Dokumentasi",
+        "description": "Pelajari cara menggunakan OpenCode"
+      },
+      "feedback": {
+        "label": "Kirim Umpan Balik",
+        "description": "Bantu kami meningkatkan OpenCode Android"
+      }
+    },
+    "language": {
+      "label": "Bahasa",
+      "title": "Pilih Bahasa",
+      "system": "Default Sistem",
+      "en": "English",
+      "id": "Bahasa Indonesia",
+      "zhHans": "简体中文"
+    },
+    "footer": {
+      "appName": "OpenCode Mobile",
+      "tagline": "Terhubung ke asisten coding AI Anda dari mana saja"
+    },
+    "alerts": {
+      "privacyNotSavedTitle": "Pengaturan Privasi Gagal Disimpan",
+      "privacyNotSavedMessage": "Pelaporan crash dimatikan untuk sesi ini, namun pilihan Anda tidak dapat disimpan. Silakan coba lagi.",
+      "notificationsDisabledTitle": "Notifikasi Dinonaktifkan",
+      "notificationsDisabledMessage": "Aktifkan notifikasi untuk OpenCode di pengaturan perangkat Anda untuk menerima peringatan."
+    }
+  },
+  "session": {
+    "titleFallback": "Sesi",
+    "toolbar": {
+      "auto": "Otomatis"
+    },
+    "banners": {
+      "reconnecting": "Menghubungkan ulang… (percobaan {{attempt}})",
+      "connected": "Terhubung ✓",
+      "reverted": "Pesan dikembalikan — kirim ulang untuk mengonfirmasi",
+      "undo": "Urungkan"
+    },
+    "empty": {
+      "title": "Mulai percakapan",
+      "hint": "Ketik / untuk melihat perintah"
+    },
+    "loadingOlder": "Memuat pesan sebelumnya...",
+    "input": {
+      "placeholderListening": "Mendengarkan...",
+      "placeholderFollowUp": "Send a follow-up...",
+      "placeholderDefault": "Ketik pesan..."
+    },
+    "actions": {
+      "editMessage": "Edit pesan",
+      "replace": "Ganti",
+      "fork": "Cabangkan Sesi dari Sini",
+      "forkPrefix": "Cabang"
+    },
+    "alerts": {
+      "messageActionsTitle": "Tindakan pesan",
+      "notSupportedTitle": "Tidak didukung",
+      "notSupportedMessage": "Mengedit pesan yang sudah terkirim memerlukan versi server opencode yang lebih baru. Silakan perbarui server dan coba lagi.",
+      "revertAuthFailedTitle": "Autentikasi gagal",
+      "revertAuthFailedMessage": "Kredensial server Anda ditolak. Periksa koneksi Anda dan coba lagi.",
+      "editFailedTitle": "Gagal mengedit",
+      "editFailedMessage": "Tidak dapat mengembalikan ke pesan ini. Silakan coba lagi.",
+      "replaceDraftTitle": "Ganti draf?",
+      "replaceDraftMessage": "Anda memiliki pesan yang belum terkirim di composer. Mengedit pesan ini akan menggantikannya.",
+      "cameraPermissionTitle": "Izin diperlukan",
+      "cameraPermissionMessage": "Akses kamera diperlukan untuk mengambil foto.",
+      "emptyClipboardTitle": "Papan klip kosong",
+      "emptyClipboardMessage": "Papan klip tidak berisi teks atau gambar.",
+      "authRequiredTitle": "Autentikasi diperlukan",
+      "authRequiredMessage": "Autentikasi biometrik diperlukan untuk mengirim pesan. Silakan coba lagi.",
+      "sendFailedTitle": "Pesan tidak terkirim",
+      "sendFailedMessage": "Tidak dapat mengirim pesan Anda. Periksa koneksi Anda dan coba lagi.",
+      "replyFailedTitle": "Gagal Merespons",
+      "replyFailedMessage": "Tidak dapat mengirim respons Anda. Silakan coba lagi.",
+      "rejectFailedTitle": "Gagal Menolak",
+      "rejectFailedMessage": "Tidak dapat mengirim respons Anda. Silakan coba lagi.",
+      "imageFailedTitle": "Gambar tidak terlampir",
+      "imageFailedMessage": "Satu atau lebih gambar tidak dapat diproses. Silakan coba foto lain.",
+      "speechErrorTitle": "Input suara gagal",
+      "speechErrorMessage": "Tidak dapat menggunakan input suara. Periksa izin mikrofon Anda dan coba lagi.",
+      "forkFailedTitle": "Gagal Mencabangkan Sesi",
+      "forkFailedMessage": "Tidak dapat mencabangkan sesi. Silakan coba lagi."
+    }
+  },
+  "connection": {
+    "shared": {
+      "connectionType": "Tipe Koneksi",
+      "types": {
+        "local": "Lokal",
+        "tunnel": "Tunnel",
+        "cloud": "Cloud"
+      },
+      "name": "Nama",
+      "namePlaceholder": "Server Saya",
+      "serverUrl": "URL Server",
+      "directoryOptional": "Direktori Proyek (Opsional)",
+      "authentication": "Autentikasi",
+      "username": "Nama Pengguna",
+      "password": "Kata Sandi",
+      "alerts": {
+        "enterName": "Masukkan nama koneksi",
+        "enterUrl": "Masukkan URL server",
+        "invalidUrlTitle": "URL Tidak Valid",
+        "invalidUrlMessage": "Masukkan URL lengkap termasuk http:// atau https://, misal http://192.168.1.100:4096",
+        "connectionFailedTitle": "Koneksi Gagal",
+        "unknownError": "Kesalahan tidak diketahui",
+        "saveFailedTitle": "Tidak Dapat Menyimpan Koneksi",
+        "saveFailedMessage": "Uji koneksi berhasil, namun gagal menyimpan. Silakan coba lagi."
+      }
+    },
+    "add": {
+      "quick": {
+        "title": "Sambungkan ke OpenCode",
+        "subtitle": "Masukkan alamat IP komputer Anda untuk tersambung",
+        "ipAddressLabel": "Alamat IP",
+        "nameOptionalLabel": "Nama (opsional)",
+        "namePlaceholder": "Mac Saya",
+        "passwordIfSetLabel": "Kata Sandi (jika diatur di server)",
+        "passwordPlaceholder": "Biarkan kosong jika tidak ada",
+        "usernameHintPrefix": "Nama pengguna default adalah ",
+        "usernameHintMiddle": ". Nama pengguna khusus? Gunakan ",
+        "usernameHintSuffix": ".",
+        "advancedOptionsLink": "Opsi lanjutan",
+        "connectButton": "Sambungkan",
+        "helpTitle": "Cara menemukan IP Anda:",
+        "helpMacPrefix": "Di Mac Anda, jalankan:",
+        "helpTailscalePrefix": "Contoh Tailscale:",
+        "helpProtocolPrefix": "Gunakan ",
+        "helpProtocolMiddle": " untuk alamat lokal dan Tailscale kecuali TLS dikonfigurasi, lalu gunakan ",
+        "helpProtocolSuffix": ".",
+        "helpRunningPrefix": "Pastikan OpenCode sedang berjalan:",
+        "connectCardTitle": "OpenCode Connect",
+        "connectCardBadge": "Segera Hadir",
+        "connectCardDesc": "Jembatani ponsel ke server opencode Anda — tanpa setup tunnel, tanpa konfigurasi firewall. Sambungkan sekali sentuh dari mana saja.",
+        "advancedLink": "Opsi lanjutan (tunnel, cloud, autentikasi)"
+      },
+      "waitlist": {
+        "successText": "Anda telah masuk daftar — kami akan mengirim email saat OpenCode Connect siap.",
+        "joinButton": "Gabung Daftar Tunggu",
+        "alertTitle": "Gabung Daftar Tunggu",
+        "queuedText": "Tersimpan di perangkat ini — pendaftaran akan diselesaikan begitu Anda kembali online.",
+        "emailUsLink": "Masih tidak berhasil? Kirim email kepada kami",
+        "emailUsButton": "Kirim email",
+        "queueFailedMessage": "Tidak dapat menjangkau layanan pendaftaran atau menyimpan permintaan di perangkat ini. Anda dapat mengirim email dan kami akan menambahkan Anda secara manual.",
+        "noMailAppMessage": "Aplikasi email tidak tersedia. Silakan kirim email ke support@agentlabs.cc dengan subjek \"OpenCode Connect Waitlist\"."
+      },
+      "advanced": {
+        "backToQuick": "Mode sederhana",
+        "urlHintPrefix": "Contoh Lokal/Tailscale: ",
+        "urlHintOr": " atau ",
+        "urlHintUse": ". Gunakan ",
+        "urlHintSuffix": " hanya jika TLS dikonfigurasi.",
+        "directoryHint": "Biarkan kosong untuk menggunakan direktori server saat ini, atau tentukan jalur folder kerja lain.",
+        "saveButton": "Simpan Koneksi"
+      },
+      "alerts": {
+        "enterIp": "Masukkan alamat IP komputer Anda",
+        "connectionFailedMessage": "{{summary}}\n\nTarget: {{target}}\nError: {{error}}"
+      }
+    },
+    "edit": {
+      "notFound": "Koneksi tidak ditemukan",
+      "directoryHint": "Biarkan kosong untuk menggunakan direktori server saat ini. Sesi akan dibuat di folder ini.",
+      "passwordLabel": "Kata Sandi (biarkan kosong untuk mempertahankan yang ada)",
+      "testButton": "Uji Koneksi",
+      "saveButton": "Simpan Perubahan",
+      "deleteButton": "Hapus Koneksi",
+      "alerts": {
+        "successTitle": "Berhasil",
+        "successMessage": "Koneksi berhasil!",
+        "connectionFailedMessage": "{{summary}}\n\n({{detail}})",
+        "noDetail": "tanpa detail",
+        "deleteTitle": "Hapus Koneksi",
+        "deleteMessage": "Yakin ingin menghapus \"{{name}}\"?"
+      }
+    }
+  },
+  "nav": {
+    "sessionsTab": "Sesi",
+    "connectionsTab": "Koneksi",
+    "settingsTab": "Pengaturan",
+    "addConnectionTitle": "Tambah Koneksi",
+    "editConnectionTitle": "Edit Koneksi"
+  },
+  "connectionsList": {
+    "activeBadge": "Aktif",
+    "lastConnected": "Terakhir terhubung: {{date}}",
+    "actionsAlert": {
+      "message": "Apa yang ingin Anda lakukan?",
+      "edit": "Edit"
+    },
+    "empty": {
+      "title": "Belum Ada Koneksi",
+      "subtitle": "Tambahkan koneksi ke server OpenCode Anda"
+    },
+    "header": "Ketuk untuk beralih, tekan lama untuk opsi",
+    "preferences": {
+      "title": "Preferensi",
+      "pageSizeLabel": "Pesan per halaman",
+      "pageSizeHint": "Berapa banyak pesan yang dimuat saat membuka sesi. Lebih sedikit = lebih cepat."
+    }
+  },
+  "sessionsList": {
+    "untitledSession": "Sesi Tanpa Judul",
+    "searchPlaceholder": "Cari sesi...",
+    "time": {
+      "justNow": "Baru saja",
+      "minutesAgo": "{{count}}m lalu",
+      "hoursAgo": "{{count}}j lalu",
+      "daysAgo": "{{count}}h lalu"
+    },
+    "filesCount": "{{count}} file",
+    "actions": {
+      "rename": "Ganti Nama",
+      "archive": "Arsipkan Sesi",
+      "unarchive": "Batal Arsipkan"
+    },
+    "tabs": {
+      "active": "Aktif ({{count}})",
+      "archived": "Diarsipkan ({{count}})"
+    },
+    "alerts": {
+      "renameFailedTitle": "Gagal mengganti nama",
+      "renameFailedMessage": "Tidak dapat mengganti nama sesi. Silakan coba lagi.",
+      "deleteTitle": "Hapus Sesi",
+      "deleteMessage": "Hapus \"{{title}}\"?",
+      "deleteFailedTitle": "Gagal menghapus",
+      "deleteFailedMessage": "Tidak dapat menghapus sesi. Silakan coba lagi.",
+      "createFailedMessage": "Gagal membuat sesi. Periksa koneksi Anda dan coba lagi."
+    },
+    "empty": {
+      "noConnectionTitle": "Tidak Ada Koneksi",
+      "noConnectionSubtitle": "Hubungkan ke komputer yang menjalankan opencode serve di jaringan Anda atau via Tailscale untuk memulai.",
+      "setupGuideLink": "Cara menyiapkan server",
+      "addConnectionButton": "Tambah Koneksi",
+      "tryDemoButton": "Coba demo (tanpa server)",
+      "authFailedTitle": "Autentikasi Gagal",
+      "authFailedSubtitle": "{{name}} menolak kredensial Anda. Periksa nama pengguna dan kata sandi untuk menyambung ulang.",
+      "checkCredentialsButton": "Periksa Kredensial",
+      "noSessions": "Belum ada sesi"
+    },
+    "newSessionModal": {
+      "title": "Sesi Baru",
+      "currentProjectLabel": "Proyek Saat Ini",
+      "serverDefault": "Default server",
+      "recentProjectsLabel": "Proyek Terbaru",
+      "serverProjectsLabel": "Proyek Server",
+      "browseFoldersLabel": "Jelajahi Folder…",
+      "browseFoldersHint": "Jelajahi sistem file server",
+      "enterPathLabel": "Masukkan Jalur Manual",
+      "createInButton": "Buat di {{dir}}",
+      "createSessionButton": "Buat Sesi"
+    },
+    "renameModal": {
+      "title": "Ganti Nama Sesi"
+    }
+  },
+  "notifications": {
+    "categories": {
+      "permissions": {
+        "label": "Permintaan Izin",
+        "description": "Ketika alat membutuhkan persetujuan untuk melanjutkan"
+      },
+      "questions": {
+        "label": "Pertanyaan",
+        "description": "Ketika asisten membutuhkan masukan Anda"
+      },
+      "completed": {
+        "label": "Tugas Selesai",
+        "description": "Ketika sesi selesai memproses"
+      },
+      "errors": {
+        "label": "Kesalahan",
+        "description": "Ketika sesi mengalami masalah"
+      },
+      "connection": {
+        "label": "Koneksi",
+        "description": "Ketika aplikasi terputus dalam waktu yang lama"
+      }
+    }
+  },
+  "errorBoundary": {
+    "title": "Terjadi kesalahan",
+    "subtitle": "Aplikasi mengalami kesalahan yang tidak terduga dan telah dilaporkan otomatis. Anda dapat membagikan laporan detail untuk membantu perbaikan lebih cepat.",
+    "errorLabel": "Kesalahan",
+    "unknownError": "Kesalahan tidak diketahui",
+    "stackLabel": "Stack",
+    "componentLabel": "Komponen",
+    "shareButton": "Bagikan Laporan",
+    "tryAgainButton": "Coba Lagi"
+  },
+  "telemetryConsent": {
+    "title": "Bantu tingkatkan OpenCode?",
+    "body": "Bagikan laporan crash anonim dan analitik penggunaan untuk membantu kami menemukan dan memperbaiki bug lebih cepat. Laporan diagnostik yang Anda bagikan juga dikirim ke kotak masuk dukungan kami. Kode, prompt, atau alamat server tidak akan pernah disertakan.",
+    "bullets": {
+      "deviceInfo": "Model perangkat, versi OS, versi aplikasi",
+      "stackTraces": "Pelacakan stack crash (tanpa nilai variabel)",
+      "usageEvents": "Aktivitas penggunaan anonim (aplikasi dibuka, percobaan koneksi, pesan dikirim) — dikirim ke PostHog",
+      "noCode": "Kode, prompt, atau pesan obrolan Anda",
+      "noServerUrls": "URL server atau token autentikasi"
+    },
+    "privacyLink": "Baca kebijakan privasi lengkap kami",
+    "declineA11yLabel": "Tidak, tolak pelaporan crash dan analitik",
+    "declineButton": "Tidak",
+    "allowA11yLabel": "Izinkan laporan crash anonim dan analitik penggunaan",
+    "allowButton": "Izinkan",
+    "footnote": "Anda dapat mengubah ini kapan saja di Pengaturan → Privasi."
+  },
+  "authGate": {
+    "title": "OpenCode Terkunci",
+    "subtitle": "Autentikasi untuk mengakses sesi Anda",
+    "unlockButton": "Buka Kunci"
+  },
+  "chat": {
+    "permissionPrompt": {
+      "title": "Izin Diperlukan",
+      "deny": "Tolak",
+      "always": "Selalu",
+      "allow": "Izinkan"
+    },
+    "questionPrompt": {
+      "headerFallback": "Pertanyaan",
+      "answerPlaceholder": "Ketik jawaban Anda...",
+      "customAnswerLabel": "Ketik jawaban kustom",
+      "dismiss": "Tutup",
+      "next": "Berikutnya",
+      "submit": "Kirim"
+    },
+    "statusIndicator": {
+      "retrying": "Mencoba ulang (percobaan {{attempt}})...",
+      "working": "Sedang bekerja..."
+    },
+    "slashPopover": {
+      "customBadge": "perintah"
+    },
+    "modelPicker": {
+      "title": "Pilih Model",
+      "searchPlaceholder": "Cari model..."
+    },
+    "variantPicker": {
+      "title": "Upaya Penalaran",
+      "autoLabel": "Otomatis",
+      "autoDescription": "Gunakan penalaran default model",
+      "effort": {
+        "low": "Lebih cepat, penalaran standar",
+        "medium": "Seimbang antara penalaran dan kecepatan",
+        "high": "Penalaran mendalam dan menyeluruh"
+      }
+    },
+    "directorySwitcher": {
+      "title": "Ganti Proyek",
+      "serverDefaultLabel": "Default Server",
+      "browseLabel": "Jelajahi…",
+      "recentProjectsLabel": "Proyek Terbaru",
+      "usesServerDir": "Menggunakan direktori kerja server"
+    },
+    "directoryBrowserSheet": {
+      "noActiveConnection": "Tidak ada koneksi aktif",
+      "listFailed": "Gagal menampilkan direktori",
+      "title": "Jelajahi Folder",
+      "jumpPlaceholder": "Lompat ke jalur...",
+      "noSubfolders": "Tidak ada subfolder di sini",
+      "enterPathHint": "Masukkan jalur di atas untuk mulai menjelajah",
+      "useFolderButton": "Gunakan {{folder}}",
+      "thisFolderFallback": "folder ini"
+    },
+    "reasoningBlock": {
+      "thinking": "Sedang berpikir...",
+      "thinkingWithDuration": "Sedang berpikir ({{duration}} dtk)...",
+      "thoughtWithDuration": "Berpikir selama {{duration}} dtk",
+      "thoughtProcess": "Proses berpikir"
+    },
+    "toolCallCard": {
+      "fallbackTitle": "Alat",
+      "patternOnly": "Pola: {{pattern}}",
+      "patternWithPath": "Pola: {{pattern}} di {{path}}"
+    },
+    "sessionInfo": {
+      "noUsageData": "Belum ada data penggunaan",
+      "loading": "Memuat...",
+      "loadAllMessages": "Muat semua pesan",
+      "jumpToBeginning": "Lompat ke awal",
+      "pills": {
+        "in": "Masuk",
+        "out": "Keluar",
+        "think": "Pikir",
+        "cacheRead": "Cache B",
+        "cacheWrite": "Cache T"
+      },
+      "meta": {
+        "created": "Dibuat",
+        "updated": "Diperbarui",
+        "messages": "Pesan",
+        "changes": "Perubahan",
+        "shared": "Dibagikan",
+        "yes": "Ya"
+      },
+      "time": {
+        "justNow": "baru saja",
+        "minutesAgo": "{{count}}m lalu",
+        "hoursAgo": "{{count}}j lalu",
+        "daysAgo": "{{count}}h lalu"
+      }
+    },
+    "todo": {
+      "title": "Tugas & Daftar Todo",
+      "emptyTitle": "Belum ada tugas yang dilacak",
+      "emptyDesc": "OpenCode secara otomatis membuat dan melacak checklist tugas saat merencanakan perubahan besar.",
+      "noMatch": "Tidak ada tugas yang cocok"
+    }
+  },
+  "demo": {
+    "title": "Demo",
+    "banner": "Demo — contoh percakapan, tanpa terhubung ke server",
+    "ctaTitle": "Tertarik dengan apa yang Anda lihat?",
+    "ctaSubtitle": "Ini adalah demo terpandu. Sambungkan server opencode Anda sendiri untuk mulai menggunakannya.",
+    "connectButton": "Sambungkan server Anda",
+    "setupGuideLink": "Cara menyiapkan server",
+    "hostedCtaLink": "Belum punya server? Gabung daftar tunggu OpenCode Connect — hosted, tanpa setup"
+  },
+  "update": {
+    "available": "Pembaruan tersedia",
+    "body": "Versi {{version}} telah rilis. Anda menggunakan {{current}}.",
+    "action": "Dapatkan",
+    "dismiss": "Nanti",
+    "upToDate": "Sudah terbaru"
+  },
+  "feedback": {
+    "title": "Umpan Balik & Survei",
+    "thankYou": "Terima kasih atas masukan Anda!",
+    "submittedNotice": "Tanggapan Anda telah dikirim untuk membantu kami meningkatkan aplikasi.",
+    "selectOption": "Pilih salah satu opsi:",
+    "categoryTitle": "Kategori Masukan",
+    "categories": {
+      "general": "Umum",
+      "bug": "Laporan Bug",
+      "feature": "Fitur Baru",
+      "praise": "Apresiasi"
+    },
+    "ratingTitle": "Bagaimana pengalaman Anda?",
+    "commentsTitle": "Komentar (opsional)",
+    "commentsPlaceholder": "Bagikan pendapat, saran, atau kendala Anda...",
+    "submit": "Kirim Masukan"
+  },
+  "setupGuide": {
+    "title": "Panduan Menyiapkan Server",
+    "step1": {
+      "title": "Install OpenCode di Komputer",
+      "desc": "Jalankan perintah berikut di Terminal Mac, Linux, atau Windows (WSL):"
+    },
+    "step2": {
+      "title": "Jalankan Server",
+      "desc": "Buka folder proyek Anda di terminal, lalu jalankan:"
+    },
+    "step3": {
+      "title": "Temukan Alamat IP",
+      "desc": "Gunakan perintah berikut untuk menemukan IP komputer:"
+    },
+    "step4": {
+      "title": "Koneksi Jarak Jauh (Tailscale)",
+      "desc": "Untuk tersambung saat di luar rumah tanpa konfigurasi port forwarding, gunakan Tailscale di komputer dan HP Anda:"
+    }
+  }
+}
