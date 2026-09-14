@@ -1,7 +1,18 @@
 import { useMemo, isValidElement, cloneElement, memo, type ReactNode } from "react"
-import { View, Text, useColorScheme, Platform, type StyleProp, type ViewStyle, type TextStyle } from "react-native"
+import {
+  View,
+  Text,
+  TouchableHighlight,
+  useColorScheme,
+  Platform,
+  type StyleProp,
+  type ViewStyle,
+  type TextStyle,
+  type ImageStyle,
+} from "react-native"
 import { useMarkdown, Renderer } from "react-native-marked"
 import { CodeBlock } from "./CodeBlock"
+import { openLink } from "../../lib/openLink"
 
 // react-native-marked's base Renderer hardcodes `selectable` on every plain
 // text node it produces (text/strong/em/del/heading/codespan). On Android,
@@ -53,6 +64,40 @@ class CustomRenderer extends Renderer {
 
   codespan(text: string, styles?: TextStyle): ReactNode {
     return this.plainText(text, [styles, { fontStyle: "normal", fontWeight: "normal" }])
+  }
+
+  link(children: string | ReactNode[], href: string, styles?: TextStyle, title?: string): ReactNode {
+    return (
+      <Text
+        accessibilityRole="link"
+        accessibilityHint="Opens link"
+        accessibilityLabel={title || "Link"}
+        key={this.getKey()}
+        onPress={() => void openLink(href)}
+        style={styles}
+      >
+        {children}
+      </Text>
+    )
+  }
+
+  image(uri: string, alt?: string, style?: ImageStyle, title?: string): ReactNode {
+    // Keep base image behavior unless overridden via linkImage
+    return super.image(uri, alt, style, title)
+  }
+
+  linkImage(href: string, imageUrl: string, alt?: string, style?: ImageStyle, title?: string): ReactNode {
+    const imageNode = super.image(imageUrl, alt, style, title)
+    return (
+      <TouchableHighlight
+        accessibilityRole="link"
+        accessibilityHint="Opens link"
+        onPress={() => void openLink(href)}
+        key={this.getKey()}
+      >
+        {imageNode}
+      </TouchableHighlight>
+    )
   }
 }
 

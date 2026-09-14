@@ -11,10 +11,11 @@
  */
 
 import { useCallback, useEffect, useState } from "react"
-import { View, Text, TouchableOpacity, StyleSheet, Linking } from "react-native"
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useTranslation } from "react-i18next"
 import { checkForUpdate, dismissUpdate, CURRENT_VERSION, type AvailableUpdate } from "../lib/update-check"
+import { openLink } from "../lib/openLink"
 
 export function UpdateBanner({ isDark }: { isDark: boolean }) {
   const { t } = useTranslation()
@@ -42,7 +43,7 @@ export function UpdateBanner({ isDark }: { isDark: boolean }) {
     // Opening the release page is also an implicit "I've seen this version":
     // do not nag about it again either.
     void dismissUpdate(update.version)
-    void Linking.openURL(update.url)
+    void openLink(update.url)
   }, [update])
 
   if (!update) return null

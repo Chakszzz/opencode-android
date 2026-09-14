@@ -1,15 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from "react"
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
-  StyleSheet,
-  useColorScheme,
-  Linking,
-  Alert,
-} from "react-native"
+import { View, Text, ScrollView, TouchableOpacity, Switch, StyleSheet, useColorScheme, Alert } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import BottomSheet from "@gorhom/bottom-sheet"
 import { useTranslation } from "react-i18next"
@@ -28,6 +18,7 @@ import { CURRENT_VERSION, checkForUpdate, type AvailableUpdate } from "../../src
 import type { LocalePreference } from "../../src/lib/i18n/locale-resolve"
 import { OpenCodeLogo } from "../../src/components/OpenCodeLogo"
 import { FeedbackSurveySheet } from "../../src/components/chat/FeedbackSurveySheet"
+import { openLink } from "../../src/lib/openLink"
 
 function SettingRow({
   icon,
@@ -79,7 +70,7 @@ export default function SettingsScreen() {
   const { t } = useTranslation()
 
   const { settings, hasBiometrics, updateSettings, lock } = useAuth()
-  const { notifications, setNotification, locale, setLocale } = useSettings()
+  const { notifications, setNotification, locale, setLocale, linkOpenMode, setLinkOpenMode } = useSettings()
   const [osGranted, setOsGranted] = useState<boolean | null>(null)
   const [telemetryUpdating, setTelemetryUpdating] = useState(false)
   const feedbackSheetRef = useRef<BottomSheet>(null)
@@ -237,6 +228,26 @@ export default function SettingsScreen() {
         )}
       </SettingSection>
 
+      <SettingSection title={t("settings.sections.browser")} isDark={isDark}>
+        <SettingRow
+          icon="globe-outline"
+          label={t("settings.browser.inAppBrowser.label")}
+          description={
+            linkOpenMode === "inApp"
+              ? t("settings.browser.inAppBrowser.descriptionInApp")
+              : t("settings.browser.inAppBrowser.descriptionExternal")
+          }
+          isDark={isDark}
+          right={
+            <Switch
+              value={linkOpenMode === "inApp"}
+              onValueChange={(value) => setLinkOpenMode(value ? "inApp" : "external")}
+              trackColor={{ false: "#767577", true: "#22c55e" }}
+            />
+          }
+        />
+      </SettingSection>
+
       <SettingSection title={t("settings.sections.privacy")} isDark={isDark}>
         <SettingRow
           icon="shield-checkmark"
@@ -257,7 +268,7 @@ export default function SettingsScreen() {
           label={t("settings.privacy.privacyPolicy.label")}
           description={t("settings.privacy.privacyPolicy.description")}
           isDark={isDark}
-          onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+          onPress={() => void openLink(PRIVACY_POLICY_URL)}
           right={<Ionicons name="open-outline" size={20} color={isDark ? "#666666" : "#999999"} />}
         />
       </SettingSection>
@@ -283,7 +294,7 @@ export default function SettingsScreen() {
               : `${CURRENT_VERSION} · ${t("update.upToDate")}`
           }
           isDark={isDark}
-          onPress={updateAvailable ? () => Linking.openURL(updateAvailable.url) : undefined}
+          onPress={updateAvailable ? () => void openLink(updateAvailable.url) : undefined}
           right={
             updateAvailable ? (
               <Ionicons name="arrow-up-circle" size={20} color={isDark ? "#7dd3fc" : "#0369a1"} />
@@ -295,7 +306,7 @@ export default function SettingsScreen() {
           label={t("settings.about.github.label")}
           description={t("settings.about.github.description")}
           isDark={isDark}
-          onPress={() => Linking.openURL(GITHUB_REPO_URL)}
+          onPress={() => void openLink(GITHUB_REPO_URL)}
           right={<Ionicons name="open-outline" size={20} color={isDark ? "#666666" : "#999999"} />}
         />
         <SettingRow
@@ -303,7 +314,7 @@ export default function SettingsScreen() {
           label={t("settings.about.docs.label")}
           description={t("settings.about.docs.description")}
           isDark={isDark}
-          onPress={() => Linking.openURL(DOCS_URL)}
+          onPress={() => void openLink(DOCS_URL)}
           right={<Ionicons name="open-outline" size={20} color={isDark ? "#666666" : "#999999"} />}
         />
         <SettingRow

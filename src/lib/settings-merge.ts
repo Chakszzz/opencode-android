@@ -17,9 +17,17 @@ export function mergeStoredSettings<T extends { notifications: Record<string, bo
   defaults: T,
   parsed: Partial<T>,
 ): T {
-  return {
+  const merged = {
     ...defaults,
     ...parsed,
     notifications: { ...defaults.notifications, ...parsed.notifications },
   }
+  // Validate linkOpenMode if present – fallback to default on invalid value
+  if ("linkOpenMode" in defaults && "linkOpenMode" in (parsed as Record<string, unknown>)) {
+    const v = (parsed as Record<string, unknown>).linkOpenMode
+    if (v !== "inApp" && v !== "external") {
+      ;(merged as Record<string, unknown>).linkOpenMode = (defaults as Record<string, unknown>).linkOpenMode
+    }
+  }
+  return merged
 }

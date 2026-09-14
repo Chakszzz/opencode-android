@@ -12,8 +12,16 @@
     "sections": {
       "security": "Security",
       "notifications": "Notifications",
+      "browser": "Browser",
       "privacy": "Privacy",
       "about": "About"
+    },
+    "browser": {
+      "inAppBrowser": {
+        "label": "In-App Browser",
+        "descriptionInApp": "Open links inside the app",
+        "descriptionExternal": "Open links in your default browser"
+      }
     },
     "security": {
       "biometricOpen": {

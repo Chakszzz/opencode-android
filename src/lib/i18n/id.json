@@ -12,8 +12,16 @@
     "sections": {
       "security": "Keamanan",
       "notifications": "Notifikasi",
+      "browser": "Browser",
       "privacy": "Privasi",
       "about": "Tentang"
+    },
+    "browser": {
+      "inAppBrowser": {
+        "label": "Browser Dalam Aplikasi",
+        "descriptionInApp": "Buka tautan di dalam aplikasi",
+        "descriptionExternal": "Buka tautan di browser default"
+      }
     },
     "security": {
       "biometricOpen": {

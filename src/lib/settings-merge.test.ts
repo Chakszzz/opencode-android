@@ -50,3 +50,10 @@ test("does not mutate the inputs", () => {
   assert.equal(merged.notifications.a, false)
   assert.notEqual(merged.notifications, defaults.notifications)
 })
+
+test("preserves valid linkOpenMode or falls back to default", () => {
+  const defaults = { pageSize: 25, notifications: { a: true }, linkOpenMode: "inApp" as const }
+  assert.equal(mergeStoredSettings(defaults, { linkOpenMode: "external" }).linkOpenMode, "external")
+  assert.equal(mergeStoredSettings(defaults, { linkOpenMode: "invalid" as any }).linkOpenMode, "inApp")
+})
+

@@ -1,13 +1,5 @@
 import { useState, useCallback, useMemo, memo } from "react"
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  Linking,
-} from "react-native"
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import * as Clipboard from "expo-clipboard"
 import BottomSheet, {
@@ -19,6 +11,7 @@ import BottomSheet, {
 import { useTranslation } from "react-i18next"
 import { useCatalog, type Provider } from "../../stores/catalog"
 import { useConnections } from "../../stores/connections"
+import { openLink } from "../../lib/openLink"
 
 const PROVIDER_PRIORITY: Record<string, number> = {
   opencode: 0,
@@ -480,7 +473,7 @@ export const ConnectProviderSheet = memo(function ConnectProviderSheet({ isDark,
                 {info.url && (
                   <TouchableOpacity
                     style={s.linkRow}
-                    onPress={() => info.url && Linking.openURL(info.url)}
+                    onPress={() => info.url && void openLink(info.url)}
                   >
                     <Text style={[s.linkText, isDark && s.textWhite]}>Get API Key</Text>
                     <Ionicons name="open-outline" size={14} color={isDark ? "#ffffff" : "#0a0a0a"} />

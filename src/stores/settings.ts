@@ -4,6 +4,7 @@ import { type Category, defaultPreferences } from "../lib/notifications"
 import { clampPageSize, mergeStoredSettings } from "../lib/settings-merge"
 import { setAppLocale } from "../lib/i18n/config"
 import type { LocalePreference } from "../lib/i18n/locale-resolve"
+import type { LinkOpenMode } from "../lib/openLink"
 
 const SETTINGS_KEY = "opencode_settings"
 
@@ -11,12 +12,14 @@ interface Settings {
   pageSize: number
   notifications: Record<Category, boolean>
   locale: LocalePreference
+  linkOpenMode: LinkOpenMode
 }
 
 const DEFAULTS: Settings = {
   pageSize: 25,
   notifications: { ...defaultPreferences },
   locale: "system",
+  linkOpenMode: "inApp",
 }
 
 interface SettingsState extends Settings {
@@ -25,10 +28,16 @@ interface SettingsState extends Settings {
   setPageSize: (size: number) => Promise<void>
   setNotification: (category: Category, enabled: boolean) => Promise<void>
   setLocale: (locale: LocalePreference) => Promise<void>
+  setLinkOpenMode: (mode: LinkOpenMode) => Promise<void>
 }
 
 function snapshot(get: () => SettingsState): Settings {
-  return { pageSize: get().pageSize, notifications: get().notifications, locale: get().locale }
+  return {
+    pageSize: get().pageSize,
+    notifications: get().notifications,
+    locale: get().locale,
+    linkOpenMode: get().linkOpenMode,
+  }
 }
 
 async function persist(settings: Settings) {
@@ -68,5 +77,10 @@ export const useSettings = create<SettingsState>((set, get) => ({
     set({ locale })
     setAppLocale(locale) // applies immediately
     await persist({ ...snapshot(get), locale })
+  },
+
+  setLinkOpenMode: async (mode) => {
+    set({ linkOpenMode: mode })
+    await persist({ ...snapshot(get), linkOpenMode: mode })
   },
 }))
