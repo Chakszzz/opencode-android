@@ -1,0 +1,6 @@
+v0.4.17 — In-App Browser & CI Performance Enhancements
+
+• Added In-App Browser toggle in Settings (Custom Tabs / SFSafariVC) to keep you inside the app when viewing external links and documentation.
+• Seamless fallback: non-HTTP schemes and device fallbacks open safely in external default browser.
+• Added automatic GitHub release changelog extraction directly into release notes.
+• Added CI workflow concurrency rules to eliminate queue pile-up and optimize build runtime.
